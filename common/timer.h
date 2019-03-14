@@ -41,7 +41,7 @@ class Timer {
 #endif
 
 // Timer using the OpenCL event profiling API
-cl_ulong getKernelStartEndTime(cl_event event);
+cl_ulong getKernelStartEndTime(cl_event event, char* name);
 
 #endif // _TIMER_H
 

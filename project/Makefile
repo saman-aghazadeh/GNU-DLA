@@ -105,7 +105,7 @@ endif
 else ifeq ($(VENDOR),altera)
 OCC = aoc
 ifeq ($(FLOW),sw_emu)
-OCCFLAGS = -v --report -march=emulator -I device/RTL -L device/RTL -l rtl_lib.aoclib 
+OCCFLAGS = -v --report -march=emulator -DEMULATE -I device/RTL -L device/RTL -l rtl_lib.aoclib 
 else ifeq ($(FLOW),hw)
 OCCFLAGS = -v --report --profile -I device/RTL -L device/RTL -l rtl_lib.aoclib 
 endif

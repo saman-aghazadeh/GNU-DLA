@@ -44,7 +44,7 @@
 #include "hw_param.cl"
 #include "rtl_lib.h"
 
-#pragma OPENCL_EXTENSION cl_altera_channels : enable
+#pragma OPENCL EXTENSION cl_intel_channels : enable
 
 // Define the precision of the data-path
 typedef char DPTYPE;
@@ -66,12 +66,36 @@ typedef struct {
 } channel_scal;
 
 
+#ifndef EMULATE
 channel channel_vec    data_ch    __attribute__((depth(0)));
 channel channel_vec    weight_ch  __attribute__((depth(0)));
 channel channel_scal   bias_ch    __attribute__((depth(8)));
 channel channel_scal   conv_ch    __attribute__((depth(CHN_DEPTH)));
 channel channel_scal   pool_ch    __attribute__((depth(CHN_DEPTH)));
 channel channel_scal   bypass_ch  __attribute__((depth(CHN_DEPTH)));
+#else
+channel channel_vec    data_ch_write    __attribute__((io("dataCh")))   __attribute__((depth(0)));
+channel channel_vec    data_ch_read     __attribute__((io("dataCh")))   __attribute__((depth(0)));
+
+channel channel_vec    weight_ch_write  __attribute__((io("weightCh"))) __attribute__((depth(0)));
+channel channel_vec    weight_ch_read   __attribute__((io("weightCh"))) __attribute__((depth(0)));
+
+channel channel_scal   bias_ch_write    __attribute__((io("biasCh")))   __attribute__((depth(8)));
+channel channel_scal   bias_ch_read     __attribute__((io("biasCh")))   __attribute__((depth(8)));
+
+channel channel_scal   conv_ch_write    __attribute__((io("convCh")))   __attribute__((depth(CHN_DEPTH)));
+channel channel_scal   conv_ch_read     __attribute__((io("convCh")))   __attribute__((depth(CHN_DEPTH)));
+
+channel channel_scal   pool_ch_write    __attribute__((io("poolCh")))   __attribute__((depth(CHN_DEPTH)));
+channel channel_scal   pool_ch_read     __attribute__((io("poolCh")))   __attribute__((depth(CHN_DEPTH)));
+
+channel channel_scal   bypass_ch_write  __attribute__((io("bypassCh"))) __attribute__((depth(CHN_DEPTH)));
+channel channel_scal   bypass_ch_read   __attribute__((io("bypassCh"))) __attribute__((depth(CHN_DEPTH)));
+
+channel lane_data      ser_ch_write     __attribute__((io("lrnCh")))    __attribute__((depth(0)));
+
+channel lane_data      deser_ch_read    __attribute__((io("dataCh")))   __attribute__((depth(0)));
+#endif
 
 
 // parallel MAC units including (VEC_SIZE-1) multipliers
@@ -288,7 +312,11 @@ void memRead(
                     
 								if(output_idx_dim1==0 && output_idx_dim2==0 && output_idx_dim3==0){
 									bias_ch_in = bias[out_idx_z];
-									write_channel_altera(bias_ch, bias_ch_in);
+#ifndef EMULATE
+									write_channel_intel(bias_ch, bias_ch_in);
+#else
+									write_channel_intel(bias_ch_write, bias_ch_in);
+#endif
 									//#ifdef DEBUG_MEMRD
 									//printf("work-item x=%d, y=%d, z=%d, channel =0, write bias=%f\n", output_idx_dim1, output_idx_dim2, output_idx_dim3, bias_ch_in.lane[0]);
 									//#endif
@@ -300,12 +328,20 @@ void memRead(
 								for(unsigned char ll=0; ll<LANE_NUM; ll++){
 									data_ch_vec.lane[ll] = data_vec;
 								}
-								write_channel_altera(data_ch, data_ch_vec);	
+#ifndef EMULATE
+								write_channel_intel(data_ch, data_ch_vec);
+#else
+								write_channel_intel(data_ch_write, data_ch_vec);
+#endif
 								
 								
 								// weight and bias fetcher
 								weight_ch_vec = weight_buffer[output_idx_dim3*weight_dim2*weight_dim1 + output_idx_dim2*weight_dim1 + output_idx_dim1];
-								write_channel_altera(weight_ch, weight_ch_vec);	
+#ifndef EMULATE
+								write_channel_intel(weight_ch, weight_ch_vec);
+#else
+								write_channel_intel(weight_ch_write, weight_ch_vec);
+#endif
 								
 								#ifdef DEBUG_MEMRD
 								//if(gp_num_x==group_num_x-1 && gp_num_y==0 && out_idx_z==0){
@@ -402,8 +438,11 @@ void coreConv(
 
 	// each iteration generates one output
 	for(unsigned int k=0; k<output_num; k++){
-		
-		bias_ch_out = read_channel_altera(bias_ch);
+#ifndef EMULATE	
+		bias_ch_out = read_channel_intel(bias_ch);
+#else
+		bias_ch_out = read_channel_intel(bias_ch_read);
+#endif
 
 		#pragma unroll
 		for(unsigned char ll=0; ll<LANE_NUM; ll++){
@@ -418,9 +457,16 @@ void coreConv(
 		}
 
 		for(int j=0; j<conv_loop_cnt; j++){
-
-			mac_data = read_channel_altera(data_ch);
-			mac_weight = read_channel_altera(weight_ch);
+#ifndef EMULATE
+			mac_data = read_channel_intel(data_ch);
+#else
+			mac_data = read_channel_intel(data_ch_read);
+#endif
+#ifndef EMULATE
+			mac_weight = read_channel_intel(weight_ch);
+#else
+			mac_weight = read_channel_intel(weight_ch_read);
+#endif
 
 			#pragma unroll
 			for(unsigned char ll=0; ll<LANE_NUM; ll++){
@@ -486,9 +532,17 @@ void coreConv(
 		// write convoluation results
 		if((contol&0x02)==0x02)
 			//by-pass pooling
-			write_channel_altera(bypass_ch, conv_ch_in);
+#ifndef EMULATE
+			write_channel_intel(bypass_ch, conv_ch_in);
+#else
+			write_channel_intel(bypass_ch_write, conv_ch_in);
+#endif
 		else // to pooling kernel
-			write_channel_altera(conv_ch, conv_ch_in);
+#ifndef EMULATE
+			write_channel_intel(conv_ch, conv_ch_in);
+#else
+			write_channel_intel(conv_ch_write, conv_ch_in);
+#endif
 			//printf("Write channel item-%d is written in channel %d...\n", k, ll);
 
 	}// end of output loop
@@ -527,8 +581,11 @@ void maxPool(
 	col_pool_cnt = 0;
 	for(unsigned int k=0; k<input_num; k++){
 
-		conv_ch_out = read_channel_altera(conv_ch);
-	
+#ifndef EMULATE
+		conv_ch_out = read_channel_intel(conv_ch);
+#else
+		conv_ch_out = read_channel_intel(conv_ch_read);
+#endif	
 		// Two line buffer to form the 3x3 pooling window
 		#pragma unroll
 		for(unsigned char ll=0; ll<LANE_NUM; ll++){
@@ -565,7 +622,11 @@ void maxPool(
 		if(row_pool_cnt==(pool_size-1)){
 
 			if(col_pool_cnt==(pool_size-1)){
-				write_channel_altera(pool_ch, pool_final);
+#ifndef EMULATE
+				write_channel_intel(pool_ch, pool_final);
+#else
+				write_channel_intel(pool_ch_write, pool_final);
+#endif
 				#ifdef DEBUG_POOL
 				printf("        reg0=%f, reg1=%f, reg2=%f, max=%f\n", (float)pool_reg[0][0], (float)pool_reg[0][1], (float)pool_reg[0][2], (float)pool_final.lane[0]);
 				#endif
@@ -637,9 +698,17 @@ void memWrite(
 
 	if(local_z==0){
 		if((bypass&0x01)==0x01)
-			output = read_channel_altera(bypass_ch);
+#ifndef EMULATE
+			output = read_channel_intel(bypass_ch);
+#else
+			output = read_channel_intel(bypass_ch_read);
+#endif
 		else
-			output = read_channel_altera(pool_ch);
+#ifndef EMULATE
+			output = read_channel_intel(pool_ch);
+#else
+			output = read_channel_intel(pool_ch_read);
+#endif
 
 		#pragma unroll
 		for(uchar ll=0; ll<LANE_NUM; ll++){
@@ -674,7 +743,7 @@ void memWrite(
 
 
 __kernel
-__attribute__((max_work_group_size(LRN_MAX_LOCAL_SIZE)))
+__attribute__((max_work_group_size(LRN_MAX_LOCAL_SIZE, 1, 1)))
 void lrn(
 			// Params Ports
 			uchar data_dim1,
@@ -799,3 +868,61 @@ void lrn(
 
 }
 
+__kernel
+__attribute__((task))
+void lrnSer(
+		// Param Ports
+		uchar  data_dim1,
+		uchar  data_dim2,
+		ushort data_dim3,
+		// Data Ports
+		__global lane_data *restrict bottom
+		)
+
+{
+
+	for (unsigned short dim3 = 0; dim3 < data_dim3; dim3++) {
+		for (unsigned char dim2 = 0; dim2 < data_dim2; dim2++) {
+			for (unsigned char dim1 = 0; dim1 < data_dim1; dim1++) {
+				lane_data buf;
+
+				#pragma unroll
+				for (unsigned char ll = 0; ll < VEC_SIZE; ll++)
+					buf.data[ll] = bottom[dim3*data_dim2*data_dim1 + dim2*data_dim1 + dim1].data[ll];
+
+				write_channel_intel (ser_ch_write, buf);
+			}
+		}
+	}
+
+}
+
+__kernel
+__attribute__((task))
+void memReadDeser(
+	// Param Ports,
+	uchar  data_dim1,
+	uchar  data_dim2,
+	ushort data_dim3,
+	// Data Ports
+	__global lane_data *restrict top
+	)
+
+{
+
+	for (unsigned short dim3 = 0; dim3 < data_dim3; dim3++) {
+		for (unsigned char dim2 = 0; dim2 < data_dim2; dim2++) {
+			for (unsigned char dim1 = 0; dim1 < data_dim1; dim1++) {
+				lane_data buf;
+
+				buf = read_channel_intel (deser_ch_read);
+
+				#pragma unroll
+				for (unsigned char ll = 0; ll < VEC_SIZE; ll++)
+					top[dim3*data_dim2*data_dim1 + dim2*data_dim1 + dim1].data[ll] = buf.data[ll];
+
+			}
+		}
+	}
+
+}

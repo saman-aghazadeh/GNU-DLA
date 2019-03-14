@@ -47,17 +47,17 @@ double Timer::get_cur_time_s(void) {
 #endif
 
 // Timer using the OpenCL event profiling API
-cl_ulong getKernelStartEndTime(cl_event event) {
+cl_ulong getKernelStartEndTime(cl_event event, char* name) {
 	cl_int status;
 	
 	cl_ulong start, end;
 	status = clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_START, sizeof(start), &start, NULL);
 	if(status != CL_SUCCESS)
-		printf("Error: cannot get kernel start time !");
+		printf("Error: cannot get kernel start time [%s]!\n", name);
 	
 	status = clGetEventProfilingInfo(event, CL_PROFILING_COMMAND_END, sizeof(end), &end, NULL);
 	if(status != CL_SUCCESS)
-		printf("Error: cannot get kernel end time !");
+		printf("Error: cannot get kernel end time [%s]!\n", name);
 
 	return end - start;
 }
