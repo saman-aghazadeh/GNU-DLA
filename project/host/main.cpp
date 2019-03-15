@@ -152,8 +152,10 @@ const char *knl_name_conv  = "coreConv";
 const char *knl_name_Pool  = "maxPool";
 const char *knl_name_memWr = "memWrite";
 const char *knl_name_lrn   = "lrn";
+#ifdef CASCADE
 const char *knl_name_ser   = "lrnSer";
 const char *knl_name_deser = "memReadDeser";
+#endif
 
 //------------ Global Functions & Variables ------------//
 cl_uint num_devices = 0;
@@ -166,8 +168,10 @@ scoped_array<cl_kernel> knl_conv;
 scoped_array<cl_kernel> knl_memWr;
 scoped_array<cl_kernel> knl_pool;
 scoped_array<cl_kernel> knl_lrn;
+#ifdef CASCADE
 scoped_array<cl_kernel> knl_ser;
 scoped_array<cl_kernel> knl_deser;
+#endif 
 scoped_array<cl_command_queue> que_memRd;
 scoped_array<cl_command_queue> que_conv;
 scoped_array<cl_command_queue> que_memWr;
@@ -289,8 +293,10 @@ int main(int argc, char** argv)
 	knl_memWr.reset(num_devices);
 	knl_pool.reset(num_devices);
 	knl_lrn.reset(num_devices);
+#ifdef CASCADE
 	knl_ser.reset(num_devices);
 	knl_deser.reset(num_devices);
+#endif
 	// For each layer a group of buffers are created to store the weights and bias
 	weights_buf.reset(num_devices*LAYER_NUM);
 	bias_buf.reset(num_devices*LAYER_NUM);
@@ -335,13 +341,13 @@ int main(int argc, char** argv)
 
 		knl_lrn[i] = clCreateKernel(program, knl_name_lrn, &status);
 		checkError(status, "Failed to create lrn kernel");
-
+#ifdef CASCADE
 		knl_ser[i] = clCreateKernel(program, knl_name_ser, &status);
 		checkError(status, "Failed to create ser kernel");
 
 		knl_deser[i] = clCreateKernel(program, knl_name_deser, &status);
 		checkError(status, "Failed to create deser kernel");
-		
+#endif
 		// Mems
 		// Create weight and bias buffers for each layer
 		for(unsigned j = 0; j < LAYER_NUM; ++j){
@@ -468,8 +474,10 @@ int main(int argc, char** argv)
 	scoped_array<cl_event> pool_event(num_devices);
 	scoped_array<cl_event> memWr_event(num_devices);
 	scoped_array<cl_event> lrn_event(num_devices);
+#ifdef CASCADE
 	scoped_array<cl_event> ser_event(num_devices);
 	scoped_array<cl_event> deser_event(num_devices);
+#endif
 
 	// Recorde the excution time of each operation for each layer
 #ifndef USE_OPENCV
@@ -478,8 +486,10 @@ int main(int argc, char** argv)
 	cl_ulong pool_time[LAYER_NUM];
 	cl_ulong memRd_time[LAYER_NUM];
 	cl_ulong lrn_time[LAYER_NUM];
+#ifdef CASCADE
 	cl_ulong ser_time[LAYER_NUM];
 	cl_ulong deser_time[LAYER_NUM];
+#endif
 #endif
 
 	unsigned       iter_num;
@@ -568,8 +578,9 @@ int main(int argc, char** argv)
 
 			// Before setting the memRead kernel arguments, we have to set the arguments for the
 			// deserializer
+#ifdef CASCADE
 			if (j != 0) {
-				if (layer_config[j-1][pool_on]) {
+				if (layer_config[j-1][lrn_on]) {
 					argi = 0;
 		
 					status = clSetKernelArg(knl_deser[i], argi++, sizeof(cl_uchar), &layer_config[j-1][pool_x]);
@@ -609,7 +620,8 @@ int main(int argc, char** argv)
 						checkError(status, "Failed to set argument %d of kernel deser", argi - 1);
 					}	
 				}
-			}	
+			}
+#endif	
 
 			argi = 0;
 
@@ -865,7 +877,8 @@ int main(int argc, char** argv)
 			pool_dim3_div_VecSize = layer_config[j][pool_z] / VEC_SIZE;
             conv_dim3_div_VecSize = layer_config[j][conv_z] / VEC_SIZE;
 
-			if (layer_config[j][pool_on]) {
+#ifdef CASCADE
+			if (layer_config[j][lrn_on]) {
 				argi = 0;
 
 				status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_uchar), &layer_config[j][pool_x]);
@@ -905,6 +918,7 @@ int main(int argc, char** argv)
 					checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
 				}
 			}
+#endif
 
 #ifdef USE_SDX_1DDR
 			// Wait until all data are send to DDR memory
@@ -921,12 +935,15 @@ int main(int argc, char** argv)
 			if(k == 0&&pic_num==1)
 				printf("\nLaunching single work-item kernel winbuffer\n");
 
+#ifdef CASCADE
 			// Issue the deserializer if this is not the first layer
 			if (j != 0) {
-				status = clEnqueueTask(que_memRd[i], knl_deser[i], 0, NULL, &ser_event[i]);
+				status = clEnqueueTask(que_memRd[i], knl_deser[i], 0, NULL, &deser_event[i]);
 				checkError(status, "Failed to launch kernel ser");
+				if(k == 0 && pic_num == 1) 
+					printf ("\nLaunching single work-item kernel deserializer\n");
 			}
-
+#endif
 			status = clEnqueueTask(que_memRd[i], knl_memRd[i], 0, NULL, &memRd_event[i]);
 			checkError(status, "Failed to launch kernel memRD kernel");
 
@@ -982,8 +999,12 @@ int main(int argc, char** argv)
 				checkError(status, "Failed to launch kernel lrn");
 			}
 	
-			status = clEnqueueTask(que_memWr[i], knl_ser[i], 0, NULL, &deser_event[i]);
+#ifdef CASCADE
+			if (k == 0 && pic_num == 1) 
+				printf ("\nLaunching single work-item kernel serializer\n");
+			status = clEnqueueTask(que_memWr[i], knl_ser[i], 0, NULL, &ser_event[i]);
 			checkError(status, "Failed to launch kernel deser");
+#endif
 			// Wait for all kernel to finish
 			if(layer_config[j][lrn_on]){
 				status = clWaitForEvents(num_devices, lrn_event);
@@ -993,15 +1014,17 @@ int main(int argc, char** argv)
 				status = clWaitForEvents(num_devices, memWr_event);
 				checkError(status, "Failed to finish memWR event");
 			}
-			if (j != 0) {
-				status = clWaitForEvents(num_devices, deser_event);
-				checkError(status, "Failed to finish deser event");
-			}
+#ifdef CASCADE
+			status = clWaitForEvents(num_devices, ser_event);
+			checkError(status, "Failed to finish ser event");
+#endif
 
 #ifndef USE_OPENCV
 			// Profile mode, get excution time for each kernel
+#ifdef CASCADE
 			if (j != 0)
 				deser_time[j] += getKernelStartEndTime(deser_event[i], "deser");
+#endif
 			memRd_time[j] += getKernelStartEndTime(memRd_event[i], "memRd");
 			conv_time[j]  += getKernelStartEndTime(conv_event[i], "conv");
 			if(layer_config[j][pool_on])
@@ -1009,7 +1032,9 @@ int main(int argc, char** argv)
 			memWr_time[j] += getKernelStartEndTime(memWr_event[i], "memWr");
 			if(layer_config[j][lrn_on])
 				lrn_time[j] += getKernelStartEndTime(lrn_event[i], "lrn");
-			ser_time[j] += getKernelStartEndTime(ser_event[j], "ser");
+#ifdef CASCADE
+			ser_time[j] += getKernelStartEndTime(ser_event[i], "ser");
+#endif
 #endif
 
 			// Must release event object to avoid performance degeneration !!!
@@ -1026,13 +1051,15 @@ int main(int argc, char** argv)
 			if(layer_config[j][lrn_on]){
 				status = clReleaseEvent(lrn_event[i]);
 				checkError(status, "Failed to release lrn event object");
-			}	
-			if (j != 0) {
-				status = clReleaseEvent(ser_event[i]);
-				checkError(status, "Failed to release ser event object");
 			}
-			status = clReleaseEvent(deser_event[i]);
-			checkError(status, "Failed to release deser event object");
+#ifdef CASCADE
+			status = clReleaseEvent(ser_event[i]);
+			checkError(status, "Failed to release ser event object");
+			if (j != 0) {
+				status = clReleaseEvent(deser_event[i]);
+				checkError(status, "Failed to release deser event object");
+			}
+#endif
 
 
 			}// end of batch iteration
@@ -1896,12 +1923,14 @@ void cleanup()
 		if(knl_lrn && knl_lrn[i]) {
 			clReleaseKernel(knl_lrn[i]);
 		}
+#ifdef CASCADE
 		if(knl_ser && knl_ser[i]) {
 			clReleaseKernel(knl_ser[i]);
 		}
 		if(knl_deser && knl_deser[i]) {
 			clReleaseKernel(knl_deser[i]);
 		}
+#endif
 		if(que_memRd && que_memRd[i]) {
 			clReleaseCommandQueue(que_memRd[i]);
 		}

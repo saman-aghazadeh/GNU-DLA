@@ -92,9 +92,9 @@ channel channel_scal   pool_ch_read     __attribute__((io("poolCh")))   __attrib
 channel channel_scal   bypass_ch_write  __attribute__((io("bypassCh"))) __attribute__((depth(CHN_DEPTH)));
 channel channel_scal   bypass_ch_read   __attribute__((io("bypassCh"))) __attribute__((depth(CHN_DEPTH)));
 
-channel lane_data      ser_ch_write     __attribute__((io("lrnCh")))    __attribute__((depth(0)));
+channel lane_data      ser_ch_write     __attribute__((io("serdeserCh")))   __attribute__((depth(0)));
 
-channel lane_data      deser_ch_read    __attribute__((io("dataCh")))   __attribute__((depth(0)));
+channel lane_data      deser_ch_read    __attribute__((io("serdeserCh")))   __attribute__((depth(0)));
 #endif
 
 
@@ -868,6 +868,8 @@ void lrn(
 
 }
 
+#ifdef EMULATE
+
 __kernel
 __attribute__((task))
 void lrnSer(
@@ -879,7 +881,9 @@ void lrnSer(
 		__global lane_data *restrict bottom
 		)
 
-{
+{	
+
+	printf ("\n[Serializer] data_dim1=%d, data_dim2=%d, data_dim3=%d\n", data_dim1, data_dim2, data_dim3);
 
 	for (unsigned short dim3 = 0; dim3 < data_dim3; dim3++) {
 		for (unsigned char dim2 = 0; dim2 < data_dim2; dim2++) {
@@ -910,6 +914,8 @@ void memReadDeser(
 
 {
 
+	printf ("\n[Deserializer] data_dim1=%d, data_dim2=%d, data_dim3=%d\n", data_dim1, data_dim2, data_dim3);
+
 	for (unsigned short dim3 = 0; dim3 < data_dim3; dim3++) {
 		for (unsigned char dim2 = 0; dim2 < data_dim2; dim2++) {
 			for (unsigned char dim1 = 0; dim1 < data_dim1; dim1++) {
@@ -926,3 +932,5 @@ void memReadDeser(
 	}
 
 }
+
+#endif
