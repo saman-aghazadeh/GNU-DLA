@@ -310,11 +310,7 @@ void coreConv_L1(
 
 	// each iteration generates one output
 	for(unsigned int k=0; k<output_num; k++){
-#ifndef EMULATE	
-		bias_ch_out = read_channel_intel(bias_ch);
-#else
-		bias_ch_out = read_channel_intel(bias_ch_read);
-#endif
+		bias_ch_out = read_channel_intel(bias_ch_L1);
 
 		#pragma unroll
 		for(unsigned char ll=0; ll<LANE_NUM; ll++){

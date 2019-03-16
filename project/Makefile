@@ -1,7 +1,11 @@
 #set source and target for host
 HOST_EXE  = run.exe
+HOST_EXE_CASCADE_EMU  = run_cascade_emu.exe
 HOST_SRCS = ./host/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
+HOST_SRCS_CASCADE_EMU = ./host/cascade_emu_main.cpp ../common/ocl_util.cpp ../common/timer.cpp
+
 HOST_OBJS = $(HOST_SRCS:%.cpp=%.o)
+HOST_OBJS_CASCADE_EMU = $(HOST_SRCS_CASCADE_EMU:%.cpp=%.o)
 HOST_INCS = ../common
 HOST_DEBUG =
 
@@ -19,8 +23,10 @@ ifeq ($(VENDOR),xilinx)
 KERNEL_SRCS = ./device/conv_pipe_xilinx.cl
 else
 KERNEL_SRCS = ./device/conv_pipe.cl
+KERNEL_SRCS_CASCADE_EMU = ./device/conv_pipe_cascade_emu.cl
 endif
 KERNEL_NAME = conv
+KERNEL_NAME_CASCADE_EMU = cascade_emu
 KERNEL_DEFS =
 KERNEL_INCS = 
 KERNEL_DEBUG = 1
@@ -34,6 +40,7 @@ ifeq ($(VENDOR),xilinx)
 DEV_EXE = $(KERNEL_NAME).xclbin
 else ifeq ($(VENDOR),altera)
 DEV_EXE = $(KERNEL_NAME).aocx
+DEV_EXE_CASCADE_EMU = $(KERNEL_NAME_CASCADE_EMU).aocx
 else ifeq ($(VENDOR),amd)
 DEV_EXE =
 endif
@@ -124,19 +131,37 @@ endif
 all: host fpga
 
 .PHONY: host
+ifeq ($(FLOW),sw_emu)
+host: $(HOST_EXE) $(HOST_EXE_CASCADE_EMU)
+else
 host: $(HOST_EXE)
+endif
 
 .PHONY: fpga
+ifeq ($(FLOW),sw_emu)
+fpga: $(DEV_EXE) $(DEV_EXE_CASCADE_EMU)
+else
 fpga: $(DEV_EXE)
+endif
 
 $(HOST_EXE): $(HOST_OBJS)
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
-	
+
+ifeq ($(FLOW),sw_emu)
+$(HOST_EXE_CASCADE_EMU): $(HOST_OBJS_CASCADE_EMU)
+	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_CASCADE_EMU) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
+endif	
+
 %.o: %.cpp
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(CXXFLAGS) -c $< -o $@ $(COMP_CONFIG) $(OCV_LIBS)
 
 $(DEV_EXE): $(KERNEL_SRCS)
 	$(OCC) $(OCCFLAGS) $< -o $@
+
+ifeq ($(FLOW),sw_emu)
+$(DEV_EXE_CASCADE_EMU): $(KERNEL_SRCS_CASCADE_EMU)
+	$(OCC) $(OCCFLAGS) $< -o $@
+endif
 
 .PHONY: clean
 clean:

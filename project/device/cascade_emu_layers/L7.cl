@@ -506,7 +506,7 @@ void maxPool_L7(
 
 			if(col_pool_cnt==(pool_size-1)){
 
-				write_channel_intel(pool_ch_L6, pool_final);
+				write_channel_intel(pool_ch_L7, pool_final);
 
 				#ifdef DEBUG_POOL
 				printf("        reg0=%f, reg1=%f, reg2=%f, max=%f\n", (float)pool_reg[0][0], (float)pool_reg[0][1], (float)pool_reg[0][2], (float)pool_final.lane[0]);
