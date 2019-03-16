@@ -1210,26 +1210,26 @@ void readDataBack()
 	// For the last conv layer and all fc layers, read result from one of the fc buffers
 	if(layer_config[LAYER_NUM-1][memwr_dst] == 2){
 		printf("\nCopyed all batched results from fc_1 buffers.\n");
-		status = clEnqueueReadBuffer(que_memWr[0], fc_1_buf[0], CL_FALSE,          // read from device0
+		status = clEnqueueReadBuffer(que_memWr[LAYER_NUM-1], fc_1_buf[LAYER_NUM-1], CL_FALSE,          // read from device0
 			0, sizeof(DTYPE) * read_buf_size, (void *)output, 0, NULL, &finish_event[0]);
 		checkError(status, "Failed to set transfer output data");
 	}
 	else if(layer_config[LAYER_NUM-1][memwr_dst] == 3){
 		printf("\nCopyed all batched results from fc_2 buffers.\n");
-		status = clEnqueueReadBuffer(que_memWr[0], fc_2_buf[0], CL_FALSE,          // read from device0
+		status = clEnqueueReadBuffer(que_memWr[LAYER_NUM-1], fc_2_buf[LAYER_NUM-1], CL_FALSE,          // read from device0
 			0, sizeof(DTYPE) * read_buf_size, (void *)output, 0, NULL, &finish_event[0]);
 		checkError(status, "Failed to set transfer output data");
 	}
 	// For other layers, read results from data and output buffers
 	else if(layer_config[LAYER_NUM-1][memwr_dst]^layer_config[LAYER_NUM-1][lrn_on]){// if lrn is used, the mem dst is changed back to src
 		printf("\nCopyed one result from NO.%d output buffers.\n", batch_item_num);
-		status = clEnqueueReadBuffer(que_memWr[0], output_buf[batch_item_num], CL_FALSE,         // read from device0
+		status = clEnqueueReadBuffer(que_memWr[LAYER_NUM-1], output_buf[], CL_FALSE,         // read from device0
 			0, sizeof(DTYPE) * read_buf_size, (void *)output, 0, NULL, &finish_event[0]);
 		checkError(status, "Failed to set transfer output data");
 	}
 	else{
 		printf("\nCopyed one results from NO.%d data buffers.\n", batch_item_num);
-		status = clEnqueueReadBuffer(que_memWr[0], data_buf[batch_item_num], CL_FALSE,           // read from device0
+		status = clEnqueueReadBuffer(que_memWr[LAYER_NUM-1], data_buf[batch_item_num], CL_FALSE,           // read from device0
 			0, sizeof(DTYPE) * read_buf_size, (void *)output, 0, NULL, &finish_event[0]);
 		checkError(status, "Failed to set transfer output data");
 	}
