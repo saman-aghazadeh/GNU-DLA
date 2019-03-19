@@ -194,6 +194,12 @@ scoped_array<cl_mem> fc_2_buf;
 //DO NOTHING
 #endif
 
+// These two data structures are for debugging.
+// We would like to make sure that deser receives exactly
+// what the serializer sends.
+DTYPE *afterDeser[LAYER_NUM];
+DTYPE *beforeSer[LAYER_NUM];
+
 DTYPE *weights;
 DTYPE *image;
 DTYPE *data_init;
@@ -333,8 +339,8 @@ int main(int argc, char** argv)
 	weights_buf.reset(num_devices*LAYER_NUM);
 	bias_buf.reset(num_devices*LAYER_NUM);
 	// Two buffers (data and output) are used as ping-pong buffers for conv layers
-	data_buf.reset(num_devices*MAX_BATCH_SIZE*LAYER_NUM);
-	output_buf.reset(num_devices*MAX_BATCH_SIZE*LAYER_NUM);
+	data_buf.reset(num_devices*LAYER_NUM);
+	output_buf.reset(num_devices*LAYER_NUM);
 	// Two buffers are used as ping-pong buffers for fc layers
 	fc_1_buf.reset(num_devices*LAYER_NUM);
 	fc_2_buf.reset(num_devices*LAYER_NUM);
@@ -438,56 +444,55 @@ int main(int argc, char** argv)
 			checkError(status, "Failed to create buffer for bias in layer");
 
 			// Initializing all weights buffers, blocking write is used
-			status = clEnqueueWriteBuffer(que_memRd[i], weights_buf[i*LAYER_NUM+j], CL_TRUE, 0, weight_buf_size*sizeof(DTYPE), weight_conv[j], 0, NULL, NULL);
+			status = clEnqueueWriteBuffer(que_memRd[i*LAYER_NUM+j], weights_buf[i*LAYER_NUM+j], CL_TRUE, 0, weight_buf_size*sizeof(DTYPE), weight_conv[j], 0, NULL, NULL);
 			checkError(status, "Failed to transfer weight");
 
-			status = clEnqueueWriteBuffer(que_memRd[i], bias_buf[i*LAYER_NUM+j], CL_TRUE, 0, layer_config[j][bias_size] * sizeof(DTYPE), bias_conv[j], 0, NULL, NULL);
+			status = clEnqueueWriteBuffer(que_memRd[i*LAYER_NUM+j], bias_buf[i*LAYER_NUM+j], CL_TRUE, 0, layer_config[j][bias_size] * sizeof(DTYPE), bias_conv[j], 0, NULL, NULL);
 			checkError(status, "Failed to transfer bias");
 #endif
 		}
 
 		// Create data buffers for each batch item
 		
-		for(unsigned j = 0; j < input_config[batch_size]; ++j){
-			for (unsigned k = 0; k < LAYER_NUM; k++) {
+		for (unsigned k = 0; k < LAYER_NUM; k++) {
 #if defined(USE_SDX_1DDR)
-				// Input data buffers
-				data_buf[i*input_config[batch_size]+j] = clCreateBuffer(context,CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,(layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]) * sizeof(DTYPE), data_init, &status);
-				checkError(status, "Failed to create buffer for data in layer");
+			// Input data buffers
+			data_buf[i*input_config[batch_size]+j] = clCreateBuffer(context,CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR,(layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]) * sizeof(DTYPE), data_init, &status);
+			checkError(status, "Failed to create buffer for data in layer");
 
-				// Output results buffers
-				output_buf[i*input_config[batch_size]+j] = clCreateBuffer(context,CL_MEM_READ_WRITE,OUT_BUF_SIZE * sizeof(DTYPE), NULL, &status);
-				checkError(status, "Failed to create buffer for output");
+			// Output results buffers
+			output_buf[i*input_config[batch_size]+j] = clCreateBuffer(context,CL_MEM_READ_WRITE,OUT_BUF_SIZE * sizeof(DTYPE), NULL, &status);
+			checkError(status, "Failed to create buffer for output");
 
-				clEnqueueMigrateMemObjects(que_memRd[i],1, &data_buf[i*input_config[batch_size]+j], 0 /* flags, 0 means from host*/,0, NULL,&write_event[i]);
+			clEnqueueMigrateMemObjects(que_memRd[i],1, &data_buf[i*input_config[batch_size]+j], 0 /* flags, 0 means from host*/,0, NULL,&write_event[i]);
 
 #elif defined(USE_SDX_4DDR)
-				// Input data buffers
-				cl_mem_ext_ptr_t data_buf_ext,output_buf_ext;
-				data_buf_ext.flags = XCL_MEM_DDR_BANK0;//Select DDR0
-				data_buf_ext.obj = NULL;
-				data_buf_ext.param = 0;
-				data_buf[i*input_config[batch_size]+j] = clCreateBuffer(context,CL_MEM_READ_WRITE | CL_MEM_EXT_PTR_XILINX,IN_BUF_SIZE * sizeof(DTYPE),&data_buf_ext,&status);
-				checkError(status, "Failed to create buffer for data in layer");
+			// Input data buffers
+			cl_mem_ext_ptr_t data_buf_ext,output_buf_ext;
+			data_buf_ext.flags = XCL_MEM_DDR_BANK0;//Select DDR0
+			data_buf_ext.obj = NULL;
+			data_buf_ext.param = 0;
+			data_buf[i*input_config[batch_size]+j] = clCreateBuffer(context,CL_MEM_READ_WRITE | CL_MEM_EXT_PTR_XILINX,IN_BUF_SIZE * sizeof(DTYPE),&data_buf_ext,&status);
+			checkError(status, "Failed to create buffer for data in layer");
 
-				// Output results buffers
-				output_buf_ext.flags = XCL_MEM_DDR_BANK0;//Select DDR0
-				output_buf_ext.obj = NULL;
-				output_buf_ext.param = 0;
-				output_buf[i*input_config[batch_size]+j] = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_EXT_PTR_XILINX,OUT_BUF_SIZE * sizeof(DTYPE),&output_buf_ext,&status);
-				checkError(status, "Failed to create buffer for output");
+			// Output results buffers
+			output_buf_ext.flags = XCL_MEM_DDR_BANK0;//Select DDR0
+			output_buf_ext.obj = NULL;
+			output_buf_ext.param = 0;
+			output_buf[i*input_config[batch_size]+j] = clCreateBuffer(context, CL_MEM_READ_WRITE | CL_MEM_EXT_PTR_XILINX,OUT_BUF_SIZE * sizeof(DTYPE),&output_buf_ext,&status);
+			checkError(status, "Failed to create buffer for output");
 #else // IntelFPGA
-				// Input data buffers
-				data_buf[i*input_config[batch_size]*LAYER_NUM+j*LAYER_NUM+k] = clCreateBuffer(context, CL_MEM_READ_WRITE, IN_BUF_SIZE * sizeof(DTYPE), NULL, &status);
-				checkError(status, "Failed to create buffer for data in layer");
+			// Input data buffers
+			data_buf[i*LAYER_NUM+k] = clCreateBuffer(context, CL_MEM_READ_WRITE, IN_BUF_SIZE * sizeof(DTYPE), NULL, &status);
+			checkError(status, "Failed to create buffer for data in layer");
 
-				// Output results buffers
-				output_buf[i*input_config[batch_size]*LAYER_NUM+j*LAYER_NUM+k] = clCreateBuffer(context, CL_MEM_READ_WRITE, OUT_BUF_SIZE * sizeof(DTYPE), NULL, &status);
-				checkError(status, "Failed to create buffer for output");
-			}
+			// Output results buffers
+			output_buf[i*LAYER_NUM+k] = clCreateBuffer(context, CL_MEM_READ_WRITE, OUT_BUF_SIZE * sizeof(DTYPE), NULL, &status);
+			checkError(status, "Failed to create buffer for output");
 
 #endif
-		}
+	}
+
 #ifdef USE_SDX_4DDR
 		cl_mem_ext_ptr_t fc_1_buf_ext,fc_2_buf_ext;
 		fc_1_buf_ext.flags = XCL_MEM_DDR_BANK0; //Select DDR0
@@ -547,8 +552,6 @@ int main(int argc, char** argv)
 	unsigned char  weight_dim1x2;
 	unsigned int   weight_dim1x2x3;
 	unsigned short weight_dim4_div_LaneNum;
-	unsigned short pool_dim3_lastlayer_div_VecSize;
-	unsigned short conv_dim3_lastlayer_div_VecSize;
 	unsigned short pool_dim3_div_VecSize;
 	unsigned short conv_dim3_div_VecSize;
 	unsigned int   pic_num =1;
@@ -584,7 +587,6 @@ int main(int argc, char** argv)
 				memRd_time[j] =0;
 				lrn_time[j]   =0;
 #endif
-
 				if(j<CONV_NUM)
 					iter_num = input_config[batch_size]; // for conv layers, process by batch_size time
 				else
@@ -621,54 +623,40 @@ int main(int argc, char** argv)
 					weight_dim1x2 = layer_config[j][weight_w]*layer_config[j][weight_h];
 					weight_dim1x2x3 = layer_config[j][weight_w]*layer_config[j][weight_h]*layer_config[j][weight_n];
 
-					if (j != 0) {
-						pool_dim3_lastlayer_div_VecSize = layer_config[j-1][pool_z] / VEC_SIZE;
-						conv_dim3_lastlayer_div_VecSize = layer_config[j-1][conv_z] / VEC_SIZE;
-					}
-
 					// Before setting the memRead kernel arguments, we have to set the arguments for the
 					// deserializer
-					printf ("\nSetting kernel arguments for the deserializer!\n");
 					if (j != 0) {
-						if (layer_config[j-1][lrn_on]) {
-							argi = 0;
-				
-							status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_uchar), &layer_config[j-1][pool_x]);
-							checkError(status, "Failed to set argument %d of kernel deser", argi - 1);
 
-							status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_uchar), &layer_config[j-1][pool_y]);
-							checkError(status, "Failed to set argument %d of kernel deser", argi - 1);
+						argi = 0;
+						unsigned short dim3_div_VecSize = layer_config[j][data_n] / VEC_SIZE;	
 
-							status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_ushort), &pool_dim3_lastlayer_div_VecSize);
-							checkError(status, "Failed to set argument %d of kernel deser", argi - 1);
+						printf ("\nSetting kernel arguments for the deserializer! (%d, %d, %d)\n", layer_config[j][data_w], layer_config[j][data_h], dim3_div_VecSize);
 
-							status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &(data_buf[i*input_config[batch_size]*LAYER_NUM+k*LAYER_NUM+j]));
-							checkError(status, "Failed to set argument %d of kernel deser", argi - 1);
-						} else {
-							argi = 0;
+						status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_uchar), &layer_config[j][data_w]);
+						checkError(status, "Failed to set argument %d of kernel deser", argi - 1);
 
-							status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_uchar), &layer_config[j-1][conv_x]);
-							checkError(status, "Failed to set argument %d of kernel deser", argi - 1);
+						status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_uchar), &layer_config[j][data_h]);
+						checkError(status, "Failed to set argument %d of kernel deser", argi - 1);
 
-							status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_uchar), &layer_config[j-1][conv_y]);
-							checkError(status, "Failed to set argument %d of kernel deser", argi - 1);
+						status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_ushort), &dim3_div_VecSize);
+						checkError(status, "Failed to set argument %d of kernel deser", argi - 1);
 
-							status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_ushort), &conv_dim3_lastlayer_div_VecSize);
+						if (layer_config[j][memrd_src] == 0) {
+							status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &(data_buf[i*LAYER_NUM+j]));
 							checkError(status, "Failed to set argument %d of kernel deser", argi - 1);
-
-							if (layer_config[j-1][memwr_dst] == 0) {
-								status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &data_buf[i*input_config[batch_size]*LAYER_NUM+k*LAYER_NUM+j]);
-								checkError(status, "Failed to set argument %d of kernel deser", argi - 1);
-							} else if (layer_config[j-1][memwr_dst] == 1) {
-								status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &output_buf[i*input_config[batch_size]*LAYER_NUM+k*LAYER_NUM+j]);
-								checkError(status, "Failed to set argument %d of kernel deser", argi - 1);
-							} else if (layer_config[j-1][memwr_dst] == 2) {
-								status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &fc_1_buf[i*LAYER_NUM+j]);
-								checkError(status, "Failed to set argument %d of kernel deser", argi - 1);
-							} else {
-								status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &fc_2_buf[i*LAYER_NUM+j]);
-								checkError(status, "Failed to set argument %d of kernel deser", argi - 1);
-							}	
+							printf ("\nKernel deserializer with: w:%d, h:%d, n:%d, data_buf\n", layer_config[j][data_w], layer_config[j][data_h], dim3_div_VecSize);
+						} else if (layer_config[j][memrd_src] == 1) {
+							status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &(output_buf[i*LAYER_NUM+j]));
+							checkError (status, "Failed to set argument %d of kernel deser", argi - 1);
+							printf ("\nKernel deserializer with: w:%d, h:%d, n:%d, output_buf\n", layer_config[j][data_w], layer_config[j][data_h], dim3_div_VecSize);
+						} else if (layer_config[j][memrd_src] == 2) {
+							status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &(fc_1_buf[i*LAYER_NUM+j]));
+							checkError (status, "Failed to set argument %d of kernel deser", argi - 1);
+							printf ("\nKernel deserializer with: w:%d, h:%d, n:%d, fc_1_buf\n", layer_config[j][data_w], layer_config[j][data_h], dim3_div_VecSize);
+						} else if (layer_config[j][memrd_src] == 3) {
+							status = clSetKernelArg(knl_deser[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &(fc_2_buf[i*LAYER_NUM+j]));
+							checkError (status, "Failed to set argument %d of kernel deser", argi - 1);
+							printf ("\nKernel deserializer with: w:%d, h:%d, n:%d, fc_2_buf\n", layer_config[j][data_w], layer_config[j][data_h], dim3_div_VecSize);
 						}
 					}	
 
@@ -676,12 +664,9 @@ int main(int argc, char** argv)
 
 					printf ("\nSetting the kernel arguments for the memory reader!\n");
 
-					printf ("\n data_w is %d\n", layer_config[j][data_w]);
-
 					status = clSetKernelArg(knl_memRd[i*LAYER_NUM+j], argi++, sizeof(cl_uchar), &layer_config[j][data_w]);
 					checkError(status, "Failed to set argument %d of kernel memRd", argi - 1);
 
-					printf ("\nhi\n");
 					status = clSetKernelArg(knl_memRd[i*LAYER_NUM+j], argi++, sizeof(cl_uchar), &layer_config[j][data_h]);
 					checkError(status, "Failed to set argument %d of kernel memRd", argi - 1);
 
@@ -749,23 +734,27 @@ int main(int argc, char** argv)
 					// -> conv3 -> output_buf -> conv4 -> output_buf -> ...
 					printf ("\nSetting memory reader source memory!\n");
 					if(layer_config[j][memrd_src]==0){
-						status = clSetKernelArg(knl_memRd[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &data_buf[i*input_config[batch_size]*LAYER_NUM+k*LAYER_NUM+j]);
+						status = clSetKernelArg(knl_memRd[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &data_buf[i*LAYER_NUM+j]);
 						checkError(status, "Failed to set argument %d of kernel memRd", argi - 1);
+						printf ("\nMemory reader is reading from data_buf\n");
 					}
 					else if(layer_config[j][memrd_src]==1)
 					{
-						status = clSetKernelArg(knl_memRd[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &output_buf[i*input_config[batch_size]*LAYER_NUM+k*LAYER_NUM+j]);
+						status = clSetKernelArg(knl_memRd[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &output_buf[i*LAYER_NUM+j]);
 						checkError(status, "Failed to set argument %d of kernel memRd", argi - 1);
+						printf ("\nMemory reader is reading from output_buf\n");
 					}
 					else if(layer_config[j][memrd_src]==2)
 					{
 						status = clSetKernelArg(knl_memRd[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &fc_1_buf[i*LAYER_NUM+j]);
 						checkError(status, "Failed to set argument %d of kernel memRd", argi - 1);
+						printf ("\nMemory reader is reading from fc_1_buf\n");
 					}
 					else // 3
 					{
 						status = clSetKernelArg(knl_memRd[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &fc_2_buf[i*LAYER_NUM+j]);
-						checkError(status, "Failed to set argument %d of kernel memRd", argi - 1);
+						checkError(status, "Failed to set argument %d of kernel memRd", argi - 1);	
+						printf ("\nMemory reader is reading from fc_2_buf\n");
 					}
 
 					status = clSetKernelArg(knl_memRd[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &weights_buf[i*LAYER_NUM+j]);
@@ -840,7 +829,7 @@ int main(int argc, char** argv)
 					}
 
 
-					printf ("\nSetting the kernel arguments for the memory writer!\n");
+					printf ("\nSetting the kernel arguments for the memory writer! (%d, %d, %d)\n", memWr_dim1, memWr_dim2, memWr_dim3);
 					status = clSetKernelArg(knl_memWr[i*LAYER_NUM+j], argi++, sizeof(cl_uchar), &memWr_dim1);
 					checkError(status, "Failed to set argument %d of kernel memWr", argi - 1);
 
@@ -893,23 +882,27 @@ int main(int argc, char** argv)
 
 					// Select the kernel output mem object source
 					if(layer_config[j][memwr_dst]==0){
-						status = clSetKernelArg(knl_memWr[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &data_buf[i*input_config[batch_size]*LAYER_NUM+k*LAYER_NUM+j]);
+						status = clSetKernelArg(knl_memWr[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &data_buf[i*LAYER_NUM+j]);
 						checkError(status, "Failed to set argument %d of kernel memWr", argi - 1);
+						printf ("\nKernel memory writer writes into data_buf\n");
 					}
 					else if(layer_config[j][memwr_dst]==1)
 					{
-						status = clSetKernelArg(knl_memWr[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &output_buf[i*input_config[batch_size]*LAYER_NUM+k*LAYER_NUM+j]);
+						status = clSetKernelArg(knl_memWr[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &output_buf[i*LAYER_NUM+j]);
 						checkError(status, "Failed to set argument %d of kernel memWr", argi - 1);
+						printf ("\nKernel memory writer writes into output_buf\n");
 					}
 					else if(layer_config[j][memwr_dst]==2)
 					{
 						status = clSetKernelArg(knl_memWr[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &fc_1_buf[i*LAYER_NUM+j]);
 						checkError(status, "Failed to set argument %d of kernel memWr", argi - 1);
+						printf ("\nKernel memory writer writes into fc_1_buf\n");
 					}
 					else // 3
 					{
 						status = clSetKernelArg(knl_memWr[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &fc_2_buf[i*LAYER_NUM+j]);
 						checkError(status, "Failed to set argument %d of kernel memWr", argi - 1);
+						printf ("\nKernel memory writer writes into fc_2_buf\n");
 					}
 
 					// Set krn_lrn arguments.
@@ -926,58 +919,50 @@ int main(int argc, char** argv)
 						status = clSetKernelArg(knl_lrn[i*LAYER_NUM+j], argi++, sizeof(cl_char), &precision_config[j][frac_dout]);
 						checkError(status, "Failed to set argument %d of kernel lrn", argi - 1);
 
-						status = clSetKernelArg(knl_lrn[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &output_buf[i*input_config[batch_size]*LAYER_NUM+k*LAYER_NUM+j]);
+						status = clSetKernelArg(knl_lrn[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &output_buf[i*LAYER_NUM+j]);
 						checkError(status, "Failed to set argument %d of kernel lrn", argi - 1);
+						printf ("\nKernel LRN reads from output_buf\n");
 
-						status = clSetKernelArg(knl_lrn[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &data_buf[i*input_config[batch_size]*LAYER_NUM+k*LAYER_NUM+j]);
+						status = clSetKernelArg(knl_lrn[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &data_buf[i*LAYER_NUM+j]);
 						checkError(status, "Failed to set argument %d of kernel lrn", argi - 1);
+						printf("\nKernel LRN writes into data_buf\n");
 					}
 
 					pool_dim3_div_VecSize = layer_config[j][pool_z] / VEC_SIZE;
 		            conv_dim3_div_VecSize = layer_config[j][conv_z] / VEC_SIZE;
 
-					printf ("\nSetting the arguments for the kernel serializer!\n");
 					if (j != LAYER_NUM-1) {
-						if (layer_config[j][lrn_on]) {
-		
-							argi = 0;
 
-							status = clSetKernelArg(knl_ser[i*LAYER_NUM+j], argi++, sizeof(cl_uchar), &layer_config[j][pool_x]);
-							checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
+						argi = 0;
+						unsigned short dim3_div_VecSize = layer_config[j+1][data_n]/VEC_SIZE;
+						printf ("\nSetting the arguments for the kernel serializer! (%d, %d, %d)\n", layer_config[j+1][data_w], layer_config[j+1][data_h], dim3_div_VecSize);
+
+						status = clSetKernelArg(knl_ser[i*LAYER_NUM+j], argi++, sizeof(cl_uchar), &layer_config[j+1][data_w]);
+						checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
 						
-							status = clSetKernelArg(knl_ser[i*LAYER_NUM+j], argi++, sizeof(cl_uchar), &layer_config[j][pool_y]);
-							checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
+						status = clSetKernelArg(knl_ser[i*LAYER_NUM+j], argi++, sizeof(cl_uchar), &layer_config[j+1][data_h]);
+						checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
 
-							status = clSetKernelArg(knl_ser[i*LAYER_NUM+j], argi++, sizeof(cl_ushort), &pool_dim3_div_VecSize);
-							checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
+						status = clSetKernelArg(knl_ser[i*LAYER_NUM+j], argi++, sizeof(cl_ushort), &dim3_div_VecSize);
+						checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
 
-							status = clSetKernelArg(knl_ser[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &(data_buf[i*input_config[batch_size]*LAYER_NUM+k*LAYER_NUM+j]));
-							checkError(status, "Failed to set argument %d of kernel ser", argi - 1);	
+
+						if (layer_config[j+1][memrd_src] == 0) {
+							status = clSetKernelArg(knl_ser[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &data_buf[i*LAYER_NUM+j]);
+							checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
+							printf ("\nKernel serializer reads from data_buf\n");
+						} else if (layer_config[j+1][memrd_src] == 1) {
+							status = clSetKernelArg(knl_ser[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &output_buf[i*LAYER_NUM+j]);
+							checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
+							printf ("\nKernel serializer reads from output_buf\n");
+						} else if (layer_config[j+1][memrd_src] == 2) {
+							status = clSetKernelArg(knl_ser[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &fc_1_buf[i*LAYER_NUM+j]);
+							checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
+							printf ("\nKernel serializer reads from fc_1_buf\n");
 						} else {
-							argi = 0;
-
-							status = clSetKernelArg(knl_ser[i*LAYER_NUM+j], argi++, sizeof(cl_uchar), &layer_config[j][conv_x]);
+							status = clSetKernelArg(knl_ser[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &fc_2_buf[i*LAYER_NUM+j]);
 							checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
-
-							status = clSetKernelArg(knl_ser[i*LAYER_NUM+j], argi++, sizeof(cl_uchar), &layer_config[j][conv_y]);
-							checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
-
-							status = clSetKernelArg(knl_ser[i*LAYER_NUM+j], argi++, sizeof(cl_ushort), &conv_dim3_div_VecSize);
-							checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
-
-							if (layer_config[j][memwr_dst] == 0) {
-								status = clSetKernelArg(knl_ser[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &data_buf[i*input_config[batch_size]*LAYER_NUM+k*LAYER_NUM+j]);
-								checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
-							} else if (layer_config[j][memwr_dst*LAYER_NUM+j] == 1) {
-								status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_mem), &output_buf[i*input_config[batch_size]*LAYER_NUM+k*LAYER_NUM+j]);
-								checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
-							} else if (layer_config[j][memwr_dst*LAYER_NUM+j] == 2) {
-								status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_mem), &fc_1_buf[i*LAYER_NUM+j]);
-								checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
-							} else {
-								status = clSetKernelArg(knl_ser[i*LAYER_NUM+j], argi++, sizeof(cl_mem), &fc_2_buf[i*LAYER_NUM+j]);
-								checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
-							}
+							printf ("\nKernel serializer reads from fc_2_buf\n");
 						}
 					}
 
@@ -1009,7 +994,22 @@ int main(int argc, char** argv)
 			// Issue the deserializer if this is not the first layer
 			if (j != 0) {
 				status = clEnqueueTask(que_memRd[i*LAYER_NUM+j], knl_deser[i*LAYER_NUM+j], 0, NULL, &deser_event[i*LAYER_NUM+j]);
+				checkError(status, "Failed to launch kernel deserializer!");
 				printf ("Launching single work-item kernel deserializer\n");
+
+				if (j < LAYER_NUM - 1) {
+					int readBufferSize = layer_config[j][data_w] * layer_config[j][data_h] * layer_config[j][data_n] * sizeof(DTYPE);
+					if (layer_config[j][memrd_src] == 0)
+						status = clEnqueueReadBuffer(que_memRd[i*LAYER_NUM+j], data_buf[i*LAYER_NUM+j], CL_TRUE, 0, readBufferSize, afterDeser[j], 0, NULL, NULL);
+					else if (layer_config[j][memrd_src] == 1)
+						status = clEnqueueReadBuffer(que_memRd[i*LAYER_NUM+j], output_buf[i*LAYER_NUM+j], CL_TRUE, 0, readBufferSize, afterDeser[j], 0, NULL, NULL);
+					else if (layer_config[j][memrd_src] == 2)
+						status = clEnqueueReadBuffer(que_memRd[i*LAYER_NUM+j], fc_1_buf[i*LAYER_NUM+j], CL_TRUE, 0, readBufferSize, afterDeser[j], 0, NULL, NULL);
+					else
+						status = clEnqueueReadBuffer(que_memRd[i*LAYER_NUM+j], fc_2_buf[i*LAYER_NUM+j], CL_TRUE, 0, readBufferSize, afterDeser[j], 0, NULL, NULL);
+					checkError(status, "Failed to launch reading back from the memory!");
+					printf ("Launching enqueue read buffer.\n");
+				}
 			}
 			status = clEnqueueTask(que_memRd[i*LAYER_NUM+j], knl_memRd[i*LAYER_NUM+j], 0, NULL, &memRd_event[i*LAYER_NUM+j]);
 			checkError(status, "Failed to launch kernel memRD kernel");
@@ -1060,6 +1060,22 @@ int main(int argc, char** argv)
 
 				status = clEnqueueNDRangeKernel(que_memWr[i*LAYER_NUM+j], knl_lrn[i*LAYER_NUM+j], 3, NULL, knl_lrn_global_size, knl_lrn_local_size, 0, NULL, &lrn_event[i*LAYER_NUM+j]);
 				checkError(status, "Failed to launch kernel lrn");
+			}
+
+			if (j < LAYER_NUM - 2) {
+				int outputBufSize = layer_config[j+1][data_w] * layer_config[j+1][data_h] * layer_config[j+1][data_n] * sizeof(DTYPE);
+
+				printf ("Launching read from output memory!\n");
+				if (layer_config[j+1][memrd_src] == 0)
+					status = clEnqueueReadBuffer(que_memWr[i*LAYER_NUM+j], data_buf[i*LAYER_NUM+j], CL_TRUE, 0, outputBufSize, beforeSer[j], 0, NULL, NULL);
+				else if (layer_config[j+1][memrd_src] == 1)	
+					status = clEnqueueReadBuffer(que_memWr[i*LAYER_NUM+j], output_buf[i*LAYER_NUM+j], CL_TRUE, 0, outputBufSize, beforeSer[j], 0, NULL, NULL);
+				else if (layer_config[j+1][memrd_src] == 2) 	
+					status = clEnqueueReadBuffer(que_memWr[i*LAYER_NUM+j], fc_1_buf[i*LAYER_NUM+j], CL_TRUE, 0, outputBufSize, beforeSer[j], 0, NULL, NULL);
+				else
+					status = clEnqueueReadBuffer(que_memWr[i*LAYER_NUM+j], fc_2_buf[i*LAYER_NUM+j], CL_TRUE, 0, outputBufSize, beforeSer[j], 0, NULL, NULL);
+					
+				checkError (status, "Failed to readback from the output_buf");
 			}
 			
 			if (j != LAYER_NUM-1) {	
@@ -1138,6 +1154,26 @@ int main(int argc, char** argv)
 
 	t.stop();
 	time = t.get_time_s();
+
+	// Now it's time to check the results of the serializer and the deserializer.
+	for (int i = 0; i < LAYER_NUM-1; i++) {
+		printf ("\nChecking integrity of serializer and deserializer for layer %d\n", i);
+		DTYPE* ser = beforeSer[i];
+		DTYPE* deser = afterDeser[i+1];
+
+		bool isBreak = false;
+		int size = layer_config[i+1][data_w] * layer_config[i+1][data_h] * layer_config[i+1][data_n];
+		for (int j = 0; j < size; j++) {
+			if (ser[j] != deser[j]) {
+				printf ("There is difference between ser and deser for the layer %d at %d. (ser: %d, deser: %d)\n", i, j, ser[j], deser[j]);
+				//isBreak = true;
+				//break;
+			}
+
+			if (isBreak) break;
+		}
+	}
+
 #ifdef USE_OPENCV
 	printf("Done! Inference time is %fs \n", time);
 #endif
@@ -1223,7 +1259,7 @@ void readDataBack()
 	// For other layers, read results from data and output buffers
 	else if(layer_config[LAYER_NUM-1][memwr_dst]^layer_config[LAYER_NUM-1][lrn_on]){// if lrn is used, the mem dst is changed back to src
 		printf("\nCopyed one result from NO.%d output buffers.\n", batch_item_num);
-		status = clEnqueueReadBuffer(que_memWr[LAYER_NUM-1], output_buf[], CL_FALSE,         // read from device0
+		status = clEnqueueReadBuffer(que_memWr[LAYER_NUM-1], output_buf[batch_item_num], CL_FALSE,         // read from device0
 			0, sizeof(DTYPE) * read_buf_size, (void *)output, 0, NULL, &finish_event[0]);
 		checkError(status, "Failed to set transfer output data");
 	}
@@ -1327,8 +1363,7 @@ void loadImageToBuffer(int num)
 	// load image from binary files
 	bin_file_r.open(input_file_path, ios::in | ios::binary);
 
-    if(bin_file_r.is_open())
-    {
+    if(bin_file_r.is_open()) {
 		//Get file size
 		bin_file_r.seekg(0, bin_file_r.end);
 		file_size = bin_file_r.tellg();
@@ -1358,22 +1393,17 @@ void loadImageToBuffer(int num)
 		}
 	}
 
-	for(unsigned i = 0; i < num_devices; ++i) {
-		// Create data buffers for each batch item
-		for(unsigned j = 0; j < input_config[batch_size]; ++j){
 #if defined(USE_SDX_1DDR)
-			clEnqueueMigrateMemObjects(que_memRd[i],1, &data_buf[i*input_config[batch_size]+j], 0 /* flags, 0 means from host*/,0, NULL,&write_event[i]);
+	clEnqueueMigrateMemObjects(que_memRd[i],1, &data_buf[i*input_config[batch_size]+j], 0 /* flags, 0 means from host*/,0, NULL,&write_event[i]);
 #elif defined(USE_SDX_4DDR)
 			// Load image data into buffers
-			status = clEnqueueWriteBuffer(que_memRd[i], data_buf[i*input_config[batch_size]+j], CL_TRUE, 0, (layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]) * sizeof(DTYPE), data_init, 0, NULL, NULL);
-			checkError(status, "Failed to transfer input image");
+	status = clEnqueueWriteBuffer(que_memRd[i], data_buf[i*input_config[batch_size]+j], CL_TRUE, 0, (layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]) * sizeof(DTYPE), data_init, 0, NULL, NULL);
+	checkError(status, "Failed to transfer input image");
 #else
 			// Load image data into buffers
-			status = clEnqueueWriteBuffer(que_memRd[i], data_buf[i*input_config[batch_size]+j], CL_TRUE, 0, (layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]) * sizeof(DTYPE), data_init, 0, NULL, NULL);
-			checkError(status, "Failed to transfer input image");
+	status = clEnqueueWriteBuffer(que_memRd[0], data_buf[0], CL_TRUE, 0, (layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]) * sizeof(DTYPE), data_init, 0, NULL, NULL);
+	checkError(status, "Failed to transfer input image");
 #endif
-		}
-	}
 }
 
 // Read all input data and golden ref data
@@ -1544,6 +1574,21 @@ int prepare()
 			return 1;
 		}
 	}
+
+	for (int j = 0; j < LAYER_NUM-1; j++) {
+		int deserSize = layer_config[j][data_w] * layer_config[j][data_h] * layer_config[j][data_n];
+		int serSize = layer_config[j+1][data_w] * layer_config[j+1][data_h] * layer_config[j+1][data_n];
+
+		afterDeser[j] = (DTYPE *)alignedMalloc(sizeof(DTYPE)*deserSize, DMA_ALIGNMENT);
+		beforeSer[j]  = (DTYPE *)alignedMalloc(sizeof(DTYPE)*serSize, DMA_ALIGNMENT);
+
+		memset(afterDeser[j], 0, sizeof(DTYPE) * deserSize);
+		memset(beforeSer[j], 0, sizeof(DTYPE) * serSize);
+	}
+
+	int deserSize = layer_config[LAYER_NUM-1][data_w] * layer_config[LAYER_NUM-1][data_h] * layer_config[LAYER_NUM-1][data_n];
+	afterDeser[LAYER_NUM-1] = (DTYPE *) alignedMalloc(sizeof(DTYPE)*deserSize, DMA_ALIGNMENT);
+	memset(afterDeser[LAYER_NUM-1], 0, sizeof(DTYPE) * deserSize);
 
     // Weights
     bin_file_r.open(weight_file_path, ios::in | ios::binary);

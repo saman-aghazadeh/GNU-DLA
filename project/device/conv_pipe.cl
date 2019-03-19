@@ -314,6 +314,11 @@ void memRead(
 									bias_ch_in = bias[out_idx_z];
 #ifndef EMULATE
 									write_channel_intel(bias_ch, bias_ch_in);
+									//printf ("[bias] ");
+									//for (unsigned char ll = 0; ll < LANE_NUM; ll++) {
+									//	printf ("%d ", bias_ch_in.lane[ll]);
+									//}
+									//printf ("\n");
 #else
 									write_channel_intel(bias_ch_write, bias_ch_in);
 #endif
@@ -330,6 +335,13 @@ void memRead(
 								}
 #ifndef EMULATE
 								write_channel_intel(data_ch, data_ch_vec);
+								//printf ("[data]\n");
+								//for (unsigned char ll1 = 0; ll1 < LANE_NUM; ll1++) {
+								//	for (unsigned char ll2 = 0; ll2 < VEC_SIZE; ll2++) {
+								//		printf ("%d ", data_ch_vec.lane[ll1].data[ll2]);
+								//	}
+								//	printf ("\n");
+								//}
 #else
 								write_channel_intel(data_ch_write, data_ch_vec);
 #endif
@@ -339,6 +351,13 @@ void memRead(
 								weight_ch_vec = weight_buffer[output_idx_dim3*weight_dim2*weight_dim1 + output_idx_dim2*weight_dim1 + output_idx_dim1];
 #ifndef EMULATE
 								write_channel_intel(weight_ch, weight_ch_vec);
+								//printf ("[weight]\n");
+								//for (unsigned char ll1 = 0; ll1 < LANE_NUM; ll1++) {
+								//	for (unsigned char ll2 = 0; ll2 < VEC_SIZE; ll2++) {
+								//		printf ("%d ", weight_ch_vec.lane[ll1].data[ll2]);
+								//	}
+								//	printf ("\n");
+								//}
 #else
 								write_channel_intel(weight_ch_write, weight_ch_vec);
 #endif
@@ -860,6 +879,26 @@ void lrn(
 		data_out_partial.data[vv]=lrn_buffer[global_z*VEC_SIZE+vv];
 	}
 	top[global_z*data_dim2*data_dim1 + global_y*data_dim1 + global_x] = data_out_partial;
+
+	if (global_z >= 0 && global_z <= 3) {
+		if (global_y >= 0 && global_y <= 3) {
+			if (global_x >= 0 && global_x <= 3) {
+				lane_data temp;
+
+				#pragma unroll
+				for (unsigned char ll = 0; ll < VEC_SIZE; ll++) {
+					temp.data[ll] = top[global_z*data_dim2*data_dim1 + global_y*data_dim1 * global_x].data[ll];
+				}
+				printf ("[LRN] at x=%d,y=%d,z=%d = [", global_x, global_y, global_z);
+				
+				#pragma unroll
+				for (unsigned char i = 0; i < VEC_SIZE; i++) {
+					printf ("%d,", temp.data[i]);
+				}
+				printf ("]\n");
+			}
+		}
+	}
 	
 	#ifdef DEBUG_LRN_OUT
 	if(global_z==0&&global_x==0&&global_y==0)

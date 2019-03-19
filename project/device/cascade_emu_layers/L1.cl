@@ -195,7 +195,11 @@ void memRead_L1(
 									bias_ch_in = bias[out_idx_z];
 
 									write_channel_intel(bias_ch_L1, bias_ch_in);
-
+                                    printf ("[bias] ");
+                                    for (unsigned char ll = 0; ll < LANE_NUM; ll++) {
+                                        printf ("%d ", bias_ch_in.lane[ll]);
+                                    }
+                                    printf ("\n");
 									//#ifdef DEBUG_MEMRD
 									//printf("work-item x=%d, y=%d, z=%d, channel =0, write bias=%f\n", output_idx_dim1, output_idx_dim2, output_idx_dim3, bias_ch_in.lane[0]);
 									//#endif
@@ -208,13 +212,26 @@ void memRead_L1(
 									data_ch_vec.lane[ll] = data_vec;
 								}
 								write_channel_intel(data_ch_L1, data_ch_vec);
-								
+                                printf ("[data]\n");
+                                for (unsigned char ll1 = 0; ll1 < LANE_NUM; ll1++) {
+                                    for (unsigned char ll2 = 0; ll2 < VEC_SIZE; ll2++) {
+                                        printf ("%d ", data_ch_vec.lane[ll1].data[ll2]);
+                                    }
+                                    printf ("\n");
+                                }	
 								
 								// weight and bias fetcher
 								weight_ch_vec = weight_buffer[output_idx_dim3*weight_dim2*weight_dim1 + output_idx_dim2*weight_dim1 + output_idx_dim1];
 
 								write_channel_intel(weight_ch_L1, weight_ch_vec);
-								
+                                printf ("[weight]\n");
+                                for (unsigned char ll1 = 0; ll1 < LANE_NUM; ll1++) {
+                                    for (unsigned char ll2 = 0; ll2 < VEC_SIZE; ll2++) {
+                                        printf ("%d ", weight_ch_vec.lane[ll1].data[ll2]);
+                                    }
+                                    printf ("\n");
+                                }
+	
 								#ifdef DEBUG_MEMRD
 								//if(gp_num_x==group_num_x-1 && gp_num_y==0 && out_idx_z==0){
 									printf("work-item x=%d, y=%d, z=%d, offset=%d, write data in channel 0=%f\n", output_idx_dim1, output_idx_dim2, output_idx_dim3, data_offset, (float)data_ch_vec.lane[0].data[0]);
@@ -610,6 +627,7 @@ void lrn_L1(
 	int block_y = get_group_id(1);
 	int block_z = get_group_id(2);
 	#endif
+
 	
 	__local DPTYPE z_buffer[VEC_SIZE*LRN_MAX_LOCAL_SIZE+LRN_WIN_SIZE]; // allocate two more points for padding
 	__local DPTYPE lrn_buffer[VEC_SIZE*LRN_MAX_LOCAL_SIZE];
@@ -704,11 +722,45 @@ void lrn_L1(
 		data_out_partial.data[vv]=lrn_buffer[global_z*VEC_SIZE+vv];
 	}
 	top[global_z*data_dim2*data_dim1 + global_y*data_dim1 + global_x] = data_out_partial;
+
+    if (global_z >= 0 && global_z <= 3) {
+        if (global_y >= 0 && global_y <= 3) {
+            if (global_x >= 0 && global_x <= 3) {
+                lane_data temp;
+
+                #pragma unroll
+                for (unsigned char ll = 0; ll < VEC_SIZE; ll++) {
+                    temp.data[ll] = top[global_z*data_dim2*data_dim1 + global_y*data_dim1 * global_x].data[ll];
+                }
+                printf ("[LRN] at x=%d,y=%d,z=%d = [", global_x, global_y, global_z);
+                
+                #pragma unroll
+                for (unsigned char i = 0; i < VEC_SIZE; i++) {
+                    printf ("%d,", temp.data[i]);
+                }
+                printf ("]\n");
+            }
+        }
+    }
 	
 	#ifdef DEBUG_LRN_OUT
 	if(global_z==0&&global_x==0&&global_y==0)
 	printf("\nKernel LRN OUT: x=%d, y=%d, z=%d, result=%f\n", global_x, global_y, global_z, (float)data_out_partial.data[0]);
 	#endif
+/*
+	if (global_x >= 0 && global_x <= 3) {
+		if (global_y >= 0 && global_y <= 3) {
+			if (global_z >= 0 && global_z <= 3) {
+				printf ("[lrn L1] at x=%d,y=%d,z=%d = [", global_x, global_y, global_z);
+				for (unsigned char i = 0; i < VEC_SIZE; i++) {
+					printf ("%d,", top[global_z*data_dim2*data_dim1 + global_y*data_dim1 + global_x].data[i]);
+				}
+				printf ("]\n");
+			}
+		}
+	}
+*/
+
 
 }
 
@@ -723,10 +775,9 @@ void lrnSer_L1(
 		// Data Ports
 		__global lane_data *restrict bottom
 		)
-
 {	
 
-	printf ("\n[Serializer] data_dim1=%d, data_dim2=%d, data_dim3=%d\n", data_dim1, data_dim2, data_dim3);
+	printf ("\n[Serializer L1] data_dim1=%d, data_dim2=%d, data_dim3=%d\n", data_dim1, data_dim2, data_dim3);
 
 	for (unsigned short dim3 = 0; dim3 < data_dim3; dim3++) {
 		for (unsigned char dim2 = 0; dim2 < data_dim2; dim2++) {
@@ -737,6 +788,20 @@ void lrnSer_L1(
 				for (unsigned char ll = 0; ll < VEC_SIZE; ll++)
 					buf.data[ll] = bottom[dim3*data_dim2*data_dim1 + dim2*data_dim1 + dim1].data[ll];
 
+/*
+				if (dim1 >= 0 && dim1 <= 3) {
+					if (dim2 >= 0 && dim2 <= 3) {
+						if (dim3 >= 0 && dim3 <= 3) {
+							printf ("[ser L1] at x=%d,y=%d,z=%d = [", dim1, dim2, dim3);
+
+							for (unsigned char i = 0; i < VEC_SIZE; i++) {
+								printf ("%d,", buf.data[i]);
+							}
+							printf ("]\n");
+						}
+					}
+				}
+*/
 				write_channel_intel (sdeser_ch_L1, buf);
 			}
 		}

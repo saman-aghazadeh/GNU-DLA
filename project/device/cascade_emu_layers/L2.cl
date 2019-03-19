@@ -17,7 +17,7 @@ void memReadDeser_L2(
 
 {
 
-	printf ("\n[Deserializer] data_dim1=%d, data_dim2=%d, data_dim3=%d\n", data_dim1, data_dim2, data_dim3);
+	printf ("\n[Deserializer L2] data_dim1=%d, data_dim2=%d, data_dim3=%d\n", data_dim1, data_dim2, data_dim3);
 
 	for (unsigned short dim3 = 0; dim3 < data_dim3; dim3++) {
 		for (unsigned char dim2 = 0; dim2 < data_dim2; dim2++) {
@@ -29,7 +29,20 @@ void memReadDeser_L2(
 				#pragma unroll
 				for (unsigned char ll = 0; ll < VEC_SIZE; ll++)
 					top[dim3*data_dim2*data_dim1 + dim2*data_dim1 + dim1].data[ll] = buf.data[ll];
+/*
+                if (dim1 >= 0 && dim1 <= 3) {
+                    if (dim2 >= 0 && dim2 <= 3) {
+                        if (dim3 >= 0 && dim3 <= 3) {
+                            printf ("[deser L2] at x=%d,y=%d,z=%d = [", dim1, dim2, dim3);
 
+                            for (unsigned char i = 0; i < VEC_SIZE; i++) {
+                                printf ("%d,", top[dim3*data_dim2*data_dim1 + dim2*data_dim1 + dim1].data[i]);
+                            }
+                            printf ("]\n");
+                        }
+                    }
+                }				
+*/
 			}
 		}
 	}
@@ -658,6 +671,8 @@ void lrn_L2(
 	uint         addr_1, addr_2, addr;
 	float        lrn_reg1, lrn_reg2, lrn_tmp, lrn_out;
 	short        lrn_cnvt, lrn_cnvt2;
+
+
 	
 	// Load the all data in one line along dim3 into local line buffer
 	#pragma unroll
@@ -735,11 +750,45 @@ void lrn_L2(
 		data_out_partial.data[vv]=lrn_buffer[global_z*VEC_SIZE+vv];
 	}
 	top[global_z*data_dim2*data_dim1 + global_y*data_dim1 + global_x] = data_out_partial;
+
+    if (global_z >= 0 && global_z <= 3) {
+        if (global_y >= 0 && global_y <= 3) {
+            if (global_x >= 0 && global_x <= 3) {
+                lane_data temp;
+
+                #pragma unroll
+                for (unsigned char ll = 0; ll < VEC_SIZE; ll++) {
+                    temp.data[ll] = top[global_z*data_dim2*data_dim1 + global_y*data_dim1 * global_x].data[ll];
+                }
+                printf ("[LRN] at x=%d,y=%d,z=%d = [", global_x, global_y, global_z);
+                
+                #pragma unroll
+                for (unsigned char i = 0; i < VEC_SIZE; i++) {
+                    printf ("%d,", temp.data[i]);
+                }
+                printf ("]\n");
+            }
+        }
+    }
 	
 	#ifdef DEBUG_LRN_OUT
 	if(global_z==0&&global_x==0&&global_y==0)
 	printf("\nKernel LRN OUT: x=%d, y=%d, z=%d, result=%f\n", global_x, global_y, global_z, (float)data_out_partial.data[0]);
 	#endif
+
+/*
+    if (global_x >= 0 && global_x <= 3) {
+        if (global_y >= 0 && global_y <= 3) {
+            if (global_z >= 0 && global_z <= 3) {
+                printf ("[lrn L2] at x=%d,y=%d,z=%d = [", global_x, global_y, global_z);
+                for (unsigned char i = 0; i < VEC_SIZE; i++) {
+                    printf ("%d,", top[global_z*data_dim2*data_dim1 + global_y*data_dim1 + global_x].data[i]);
+                }
+                printf ("]\n");
+            }
+        }
+    }
+*/
 
 }
 
@@ -757,7 +806,7 @@ void lrnSer_L2(
 
 {	
 
-	printf ("\n[Serializer] data_dim1=%d, data_dim2=%d, data_dim3=%d\n", data_dim1, data_dim2, data_dim3);
+	// printf ("\n[Serializer] data_dim1=%d, data_dim2=%d, data_dim3=%d\n", data_dim1, data_dim2, data_dim3);
 
 	for (unsigned short dim3 = 0; dim3 < data_dim3; dim3++) {
 		for (unsigned char dim2 = 0; dim2 < data_dim2; dim2++) {
@@ -767,7 +816,20 @@ void lrnSer_L2(
 				#pragma unroll
 				for (unsigned char ll = 0; ll < VEC_SIZE; ll++)
 					buf.data[ll] = bottom[dim3*data_dim2*data_dim1 + dim2*data_dim1 + dim1].data[ll];
+/*
+                if (dim1 >= 0 && dim1 <= 3) {
+                    if (dim2 >= 0 && dim2 <= 3) {
+                        if (dim3 >= 0 && dim3 <= 3) {
+                            printf ("[ser L2] at x=%d,y=%d,z=%d = [", dim1, dim2, dim3);
 
+                            for (unsigned char i = 0; i < VEC_SIZE; i++) {
+                                printf ("%d,",buf.data[i]);
+                            }
+                            printf ("]\n");
+                        }
+                    }
+                }
+*/
 				write_channel_intel (sdeser_ch_L2, buf);
 			}
 		}
