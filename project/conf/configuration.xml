@@ -1,0 +1,67 @@
+<Configuration>
+	<!-- Here we set all the available resources as IP/Device. -->
+	<Resources>
+		<Resource>edge-1.eng.asu.edu/acl0</Resource>
+		<Resource>edge-1.eng.asu.edu/acl1</Resource>
+		<Resource>edge-3.eng.asu.edu/acl0</Resource>
+		<Resource>edge-3.eng.asu.edu/acl1</Resource>
+	<Resources>
+
+	<!-- 
+		The node that starts the computation with the
+		beginning layers.
+	--> 
+	<Begin>
+		<Node>edge-1.eng.asu.edu/acl0</Node>
+	</Begin>
+
+	<!--
+		The node that finishes the computation with the
+		final layers.
+	-->
+	<End>
+		<Node>edge-3.eng.asu.edu/acl1</Node>
+	</End>
+	
+	<!--
+		Specifies the graph of connection between the 
+		accelerators.
+	-->
+	<Connections>
+		<Connection>
+			<From>edge-1.eng.asu.edu/acl0</From>
+			<To>edge-1.eng.asu.edu/acl1</To>
+		</Connection>
+		<Connection>
+			<From>edge-1.eng.asu.edu/acl1</From>
+			<To>edge-3.eng.asu.edu/acl0</To>
+		</Connection>
+		<Connection>
+			<From>edge-3.eng.asu.edu/acl0</From>
+			<To>edge-3.eng.asu.edu/acl1</To>
+		</Connection>
+	</Connections>
+
+	<!--
+		Mapping of the layers to the devices.
+	-->
+	<LayersToDevices>
+		<LayersToDevice>
+			<Layers>1,2</Layers>
+			<Device>edge-1.eng.asu.edu/acl0</Devices>
+		</LayersToDevice>
+		<LayersToDevice>
+			<Layers>3,4</Layers>
+			<Device>edge-1.eng.asu.edu/acl1</Device>
+		</LayersToDevice>
+		<LayersToDevice>
+			<Layers>5,6</Layers>
+			<Device>edge-3.eng.asu.edu/acl0</Devices>
+		</LayersToDevice>
+		<LayersToDevice>
+			<Layers>7,8</Layers>
+			<Device>edge-3.eng.asu.edu/acl1</Device>
+		</LayersToDevice>
+	</LayersToDevices>
+
+</Configuration>
