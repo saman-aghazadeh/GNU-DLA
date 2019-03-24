@@ -7,6 +7,8 @@
 
 // Channel definition
 // we consider channel 0, and we send data through it.
+#pragma OPENCL EXTENSION cl_intel_channels : enable
+
 channel ulong4 sch_in1 __attribute__((depth(4))) __attribute__((io("kernel_input_ch1")));
 
 __kernel void receiver () {
