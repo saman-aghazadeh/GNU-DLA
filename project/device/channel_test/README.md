@@ -1,0 +1,3 @@
+# Nallatech Serial Channel Test
+
+Here we provide a code for those who would like to test the functionality of their nallatech's serial io channel. Depending on the connection between the ports of two nallatech cards, we have two tests called `Test I` and `Test II`. We believe the developer has either connected the bottom port of the first card to the top port of the second card, or connected the top port of the first card to the bottom port of the second card. Now, it is ambigous which io channels, and whether in or out, should be used by the sender and the receiver. Running these tests can tell the developer which configuration of the channels will work.

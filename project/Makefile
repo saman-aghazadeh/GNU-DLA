@@ -1,11 +1,14 @@
 #set source and target for host
 HOST_EXE  = run.exe
 HOST_EXE_CASCADE_EMU  = run_cascade_emu.exe
+HOST_EXE_CHANNEL_TEST = run_channel_test.exe 
 HOST_SRCS = ./host/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_CASCADE_EMU = ./host/cascade_emu_main.cpp ../common/ocl_util.cpp ../common/timer.cpp
+HOST_SRCS_CHANNEL_TEST = ./host/channel_test_main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 
 HOST_OBJS = $(HOST_SRCS:%.cpp=%.o)
 HOST_OBJS_CASCADE_EMU = $(HOST_SRCS_CASCADE_EMU:%.cpp=%.o)
+HOST_OBJS_CHANNEL_TEST = $(HOST_SRCS_CHANNEL_TEST:%.cpp=%.o)
 HOST_INCS = ../common
 HOST_DEBUG =
 
@@ -134,7 +137,7 @@ all: host fpga
 ifeq ($(FLOW),sw_emu)
 host: $(HOST_EXE) $(HOST_EXE_CASCADE_EMU)
 else
-host: $(HOST_EXE)
+host: $(HOST_EXE) $(HOST_EXE_CHANNEL_TEST)
 endif
 
 .PHONY: fpga
@@ -150,7 +153,10 @@ $(HOST_EXE): $(HOST_OBJS)
 ifeq ($(FLOW),sw_emu)
 $(HOST_EXE_CASCADE_EMU): $(HOST_OBJS_CASCADE_EMU)
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_CASCADE_EMU) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
-endif	
+endif
+
+$(HOST_EXE_CHANNEL_TEST): $(HOST_OBJS_CHANNEL_TEST)
+	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_CHANNEL_TEST) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
 
 %.o: %.cpp
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(CXXFLAGS) -c $< -o $@ $(COMP_CONFIG) $(OCV_LIBS)
