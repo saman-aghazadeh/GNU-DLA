@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
 	}
 
 	printf ("****************************\n");
-	printf ("Nallatech P385A Channel Test");
+	printf ("Nallatech P385A Channel Test\n");
 	printf ("****************************\n");
 
 	platform_id = findPlatform("Intel");
@@ -68,7 +68,7 @@ int main(int argc, char** argv) {
 	}
 
 	device.reset(getDevices (platform_id, DEVICE_TYPE, &num_devices));
-	if (num_device != 2) 
+	if (num_devices != 2) 
 		printf ("ERROR: there should be two devices installed on the system!\n");
 	printf("\nPlatform: %s\n", getPlatformName(platform_id).c_str());
 	printf("Using %d device(s)\n", num_devices);
@@ -109,6 +109,8 @@ int main(int argc, char** argv) {
 	status = clEnqueueTask(que_rx, rx_kernel, 0, NULL, &rx_event);
 	checkError (status, "Failed to enqueue the rx kernel");
 
+	printf ("\nBoth kernels are pushed!\n");
+
 	status = clWaitForEvents(1, &tx_event);
 	checkError (status, "Failed to wait for the tx event!");
 	status = clWaitForEvents(1, &rx_event);
@@ -116,4 +118,26 @@ int main(int argc, char** argv) {
 
 	printf ("\nDone!\n");
 
+}
+
+// Release all memory resources here
+void cleanup () {
+
+	clReleaseKernel(rx_kernel);
+	clReleaseKernel(tx_kernel);
+
+	clReleaseCommandQueue(que_rx);
+	clReleaseCommandQueue(que_tx);
+
+	if (program_rx) {
+		clReleaseProgram(program_rx);
+	}
+
+	if (program_tx) {
+		clReleaseProgram(program_tx);
+	}
+
+	if (context) {
+		clReleaseContext(context);
+	}
 }
