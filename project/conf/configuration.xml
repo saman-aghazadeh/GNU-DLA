@@ -5,7 +5,7 @@
 		<Resource>edge-1.eng.asu.edu/acl1</Resource>
 		<Resource>edge-3.eng.asu.edu/acl0</Resource>
 		<Resource>edge-3.eng.asu.edu/acl1</Resource>
-	<Resources>
+	</Resources>
 
 	<!-- 
 		The node that starts the computation with the
@@ -48,7 +48,7 @@
 	<LayersToDevices>
 		<LayersToDevice>
 			<Layers>1,2</Layers>
-			<Device>edge-1.eng.asu.edu/acl0</Devices>
+			<Device>edge-1.eng.asu.edu/acl0</Device>
 		</LayersToDevice>
 		<LayersToDevice>
 			<Layers>3,4</Layers>
@@ -56,7 +56,7 @@
 		</LayersToDevice>
 		<LayersToDevice>
 			<Layers>5,6</Layers>
-			<Device>edge-3.eng.asu.edu/acl0</Devices>
+			<Device>edge-3.eng.asu.edu/acl0</Device>
 		</LayersToDevice>
 		<LayersToDevice>
 			<Layers>7,8</Layers>
