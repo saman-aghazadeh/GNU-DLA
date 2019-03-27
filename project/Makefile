@@ -85,7 +85,7 @@ COMP_CONFIG = -I$(XILINX_SDX)/runtime/include/1_2 -I$(HOST_INCS)  -DFPGA_DEVICE 
 LINK_CONFIG = -L$(XILINX_SDX)/runtime/lib/x86_64 -lxilinxopencl
 else ifeq ($(VENDOR),altera)
 COMP_CONFIG = $(shell aocl compile-config) -I$(HOST_INCS)  -DFPGA_DEVICE
-LINK_CONFIG = $(shell aocl link-config)
+LINK_CONFIG = $(shell aocl link-config) -lrt
 else ifeq ($(VENDOR),amd)
 DEV_EXE =
 endif
@@ -135,14 +135,14 @@ all: host fpga
 
 .PHONY: host
 ifeq ($(FLOW),sw_emu)
-host: $(HOST_EXE) $(HOST_EXE_CASCADE_EMU)
+host: $(HOST_EXE) $(HOST_EXE_CASCADE_EMU) $(HOST_EXE_CHANNEL_TEST)
 else
 host: $(HOST_EXE) $(HOST_EXE_CHANNEL_TEST)
 endif
 
 .PHONY: fpga
 ifeq ($(FLOW),sw_emu)
-fpga: $(DEV_EXE) $(DEV_EXE_CASCADE_EMU)
+fpga: $(DEV_EXE) $(DEV_EXE_CASCADE_EMU) $(HOST_EXE_CHANNEL_TEST)
 else
 fpga: $(DEV_EXE)
 endif
