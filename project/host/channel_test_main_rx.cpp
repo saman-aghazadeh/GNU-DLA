@@ -77,11 +77,11 @@ int main(int argc, char** argv) {
 	context = clCreateContext(NULL, num_devices, device, NULL, NULL, &status);
 	checkError(status, "Failed to create context");
 	
-	char* kernel_rx_file_name = argv[3];
+	char* kernel_rx_file_name = argv[1];
 
-	program_rx = createProgramFromFile(context, (const char *) kernel_rx_file_name, &(device[1]), 1);
+	program_rx = createProgramFromFile(context, (const char *) kernel_rx_file_name, &(device[0]), 1);
 
-	que_rx = clCreateCommandQueue(context, device[1], CL_QUEUE_PROFILING_ENABLE, &status);
+	que_rx = clCreateCommandQueue(context, device[0], CL_QUEUE_PROFILING_ENABLE, &status);
 	checkError (status, "Failed to create the rx command queue");
 
 	rx_kernel = clCreateKernel (program_rx, "receiver", &status);
