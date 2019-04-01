@@ -1,0 +1,7 @@
+#resource file localhost
+#localhost:8000
+#node_type:slots
+DGEMM:8
+SGEMM:8
+CONV:8
+

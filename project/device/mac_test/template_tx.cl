@@ -15,7 +15,9 @@ void _move_data_to_io(tx_type_req req, unsigned long dst, unsigned long src, uns
 {
   tx_type_io TxIoData;
   unsigned long index = 0;
-  int c_id = get_compute_id(0);
+  
+  // For the sake of jesus christ we have removed it
+  //int c_id = get_compute_id(0);
   unsigned long end = (HDR_SIZE + req.end);
   unsigned long before_end = end - 1;
 
@@ -34,7 +36,8 @@ void _move_data_to_io(tx_type_req req, unsigned long dst, unsigned long src, uns
     //data passing through
     TxIoData.last_data = (index == before_end)?1:0;
 
-    write_channel_intel (tx_data_stream[c_id], TxIoData);
+    // write_channel_intel (tx_data_stream[c_id], TxIoData);
+    write_channel_intel (tx_data_stream[0], TxIoData);
   }
 
 }

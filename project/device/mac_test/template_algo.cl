@@ -20,7 +20,8 @@ __kernel void algo(
   tx_type_req TxRdmaReq;
   rx_type_resp ingress_ctrl;
   //get compute ID
-  int c_id = get_compute_id(0);
+  // Should be removed for the sake of jesus christ v17.1 and v18.1
+  // int c_id = get_compute_id(0);
  
   //determines when the algo is ready to run!!!
   ingress_ctrl = read_channel_intel(rx_rdma_res);
@@ -39,7 +40,9 @@ __kernel void algo(
   
   TxRdmaReq.parm_id = 0;
   TxRdmaReq.end = ingress_ctrl.data_len[0]-1;
-  write_channel_intel (tx_rdma_req[c_id], TxRdmaReq);
+  // Should be remove for the sake of Jesus Christ
+  // write_channel_intel (tx_rdma_req[c_id], TxRdmaReq);
+  write_channel_intel (tx_rdma_req[0], TxRdmaReq);
 
 }
 
