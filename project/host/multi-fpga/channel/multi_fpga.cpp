@@ -244,9 +244,9 @@ int main(int argc, char** argv)
 	Timer t;  // Timer used for performance measurement
 	float time;
 
-	if (argc != 2){
+	if (argc < 2){
 	printf("Error: wrong commad format, usage:\n");
-	printf("%s <binaryfile>\n", argv[0]);
+	printf("%s <binaryfile> [layers, ...]\n", argv[0]);
 	return EXIT_FAILURE;
 	}
 
@@ -294,21 +294,21 @@ int main(int argc, char** argv)
 	assigned_layers.reset(num_involved_devices);
 	layers_per_device.reset(num_involved_devices);
 	for (int i = 0; i < num_involved_devices; i++) {
+		int* layers_as_array = new int[10];
 		int num_layers_involved = 0;
 		char* layers = argv[i+2];
 		char* pch = strtok(layers, ",");
 		while (pch != NULL) {
+			layers_as_array[num_layers_involved] = atoi(pch);
 			num_layers_involved++;
+			pch = strtok(NULL, ",");
 		}
+		printf ("\n");
 		assigned_layers[i].reset(num_layers_involved);
 		layers_per_device[i] = num_layers_involved;
 
-		layers = argv[i+2];
-		pch = strtok(layers, ",");
-		int j = 0;
-		while (pch != NULL) {
-			assigned_layers[i][j] = atoi(pch);
-			j++;
+		for (int j = 0 ; j < num_layers_involved; j++) {
+			assigned_layers[i][j] = layers_as_array[j];
 		}
 	}
 
@@ -321,9 +321,6 @@ int main(int argc, char** argv)
 		}
 		printf ("\n");
 	}
-
-	// temporarily return just for checking
-	return 0;
 
 	// Create per-device objects.
 	que_memRd.reset(num_devices);
