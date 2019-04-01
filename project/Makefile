@@ -5,12 +5,14 @@ HOST_EXE_CHANNEL_TEST = run_channel_test.exe
 HOST_EXE_CHANNEL_TEST_TX = run_channel_test_tx.exe
 HOST_EXE_CHANNEL_TEST_RX = run_channel_test_rx.exe
 HOST_EXE_MAC_TEST = run_mac_test.exe
+HOST_EXE_CHANNEL_MULTI_FPGA = run_channel_multi_fpga.exe
 HOST_SRCS = ./host/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_CASCADE_EMU = ./host/cascade_emu_main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_CHANNEL_TEST = ./host/channel_test_main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_CHANNEL_TEST_TX = ./host/channel_test_main_tx.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_CHANNEL_TEST_RX = ./host/channel_test_main_rx.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_MAC_TEST = ./host/multi-fpga/template_rxtx_ut.cpp ./host/multi-fpga/fpgaStreamDrv.cpp ../common/AOCLUtils/opencl.cpp ../common/AOCLUtils/options.cpp
+HOST_SRCS_CHANNEL_MULTI_FPGA = host/multi-fpga/channel/multi_fpga.cpp ../common/ocl_util.cpp ../common/timer.cpp
 
 HOST_OBJS = $(HOST_SRCS:%.cpp=%.o)
 HOST_OBJS_CASCADE_EMU = $(HOST_SRCS_CASCADE_EMU:%.cpp=%.o)
@@ -18,6 +20,7 @@ HOST_OBJS_CHANNEL_TEST = $(HOST_SRCS_CHANNEL_TEST:%.cpp=%.o)
 HOST_OBJS_MAC_TEST = $(HOST_SRCS_MAC_TEST:%.cpp=%.o)
 HOST_OBJS_CHANNEL_TEST_TX = $(HOST_SRCS_CHANNEL_TEST_TX:%.cpp=%.o)
 HOST_OBJS_CHANNEL_TEST_RX = $(HOST_SRCS_CHANNEL_TEST_RX:%.cpp=%.o)
+HOST_OBJS_CHANNEL_MULTI_FPGA = $(HOST_SRCS_CHANNEL_MULTI_FPGA:%.cpp=%.o)
 
 HOST_INCS = ../common
 HOST_DEBUG =
@@ -145,25 +148,23 @@ all: host fpga
 
 .PHONY: host
 ifeq ($(FLOW),sw_emu)
-host: $(HOST_EXE) $(HOST_EXE_CASCADE_EMU) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX)
+host: $(HOST_EXE) $(HOST_EXE_CASCADE_EMU) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_CHANNEL_MULTI_FPGA)
 else
 host: $(HOST_EXE) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX)
 endif
 
 .PHONY: fpga
 ifeq ($(FLOW),sw_emu)
-fpga: $(DEV_EXE) $(DEV_EXE_CASCADE_EMU) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX)
+fpga: $(DEV_EXE) $(DEV_EXE_CASCADE_EMU)
 else
-fpga: $(DEV_EXE)
+fpga: $(DEV_EXE) $(HOST_EXE_CHANNEL_MULTI_FPGA)
 endif
 
 $(HOST_EXE): $(HOST_OBJS)
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
 
-ifeq ($(FLOW),sw_emu)
 $(HOST_EXE_CASCADE_EMU): $(HOST_OBJS_CASCADE_EMU)
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_CASCADE_EMU) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
-endif
 
 $(HOST_EXE_CHANNEL_TEST): $(HOST_OBJS_CHANNEL_TEST)
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_CHANNEL_TEST) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
@@ -176,6 +177,8 @@ $(HOST_EXE_CHANNEL_TEST_TX): $(HOST_OBJS_CHANNEL_TEST_TX)
 $(HOST_EXE_CHANNEL_TEST_RX): $(HOST_OBJS_CHANNEL_TEST_RX)
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_CHANNEL_TEST_RX) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
 
+$(HOST_EXE_CHANNEL_MULTI_FPGA): $(HOST_OBJS_CHANNEL_MULTI_FPGA)
+	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_CHANNEL_MULTI_FPGA) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
 
 %.o: %.cpp
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(CXXFLAGS) -c $< -o $@ $(COMP_CONFIG) $(OCV_LIBS)

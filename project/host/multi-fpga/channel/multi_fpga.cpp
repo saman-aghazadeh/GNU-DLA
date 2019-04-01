@@ -22,8 +22,8 @@
 #include "timer.h"
 
 // CNN network configuration file
-#include "../device/hw_param.cl"
-#include "layer_config.h"
+#include "../../../device/hw_param.cl"
+#include "../../layer_config.h"
 
 #ifdef USE_OPENCV
 #include <opencv2/highgui/highgui.hpp>
@@ -152,10 +152,8 @@ const char *knl_name_conv  = "coreConv";
 const char *knl_name_Pool  = "maxPool";
 const char *knl_name_memWr = "memWrite";
 const char *knl_name_lrn   = "lrn";
-#ifdef CASCADE
 const char *knl_name_ser   = "lrnSer";
 const char *knl_name_deser = "memReadDeser";
-#endif
 
 //------------ Global Functions & Variables ------------//
 cl_uint num_devices = 0;
@@ -168,10 +166,8 @@ scoped_array<cl_kernel> knl_conv;
 scoped_array<cl_kernel> knl_memWr;
 scoped_array<cl_kernel> knl_pool;
 scoped_array<cl_kernel> knl_lrn;
-#ifdef CASCADE
 scoped_array<cl_kernel> knl_ser;
 scoped_array<cl_kernel> knl_deser;
-#endif 
 scoped_array<cl_command_queue> que_memRd;
 scoped_array<cl_command_queue> que_conv;
 scoped_array<cl_command_queue> que_memWr;
