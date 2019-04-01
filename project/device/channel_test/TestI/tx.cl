@@ -13,8 +13,7 @@ channel ulong4 sch_out0 __attribute__((depth(4))) __attribute__((io("kernel_outp
 
 __kernel void sender () {
 
-	ulong i = 1;
-	//for (int i = 0; i < 1000; i++) {
+	for (int i = 0; i < 1000; i++) {
 		ulong4 tx_data;
 		tx_data.s0 = i;
 		tx_data.s1 = i+1;
@@ -24,6 +23,6 @@ __kernel void sender () {
 		printf ("Sending, A: %d, B: %d, C: %d, D: %d\n", tx_data.s0, tx_data.s1, tx_data.s2, tx_data.s3);		
 
 		write_channel_intel(sch_out0, tx_data);
-	//}
+	}
 
 }
