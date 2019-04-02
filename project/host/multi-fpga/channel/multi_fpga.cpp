@@ -352,7 +352,7 @@ int main(int argc, char** argv)
 	}
 
 	// Create qeues, kernels and mem objs
-	for(unsigned i = 0; i < num_devices; ++i) {
+	for(unsigned i = num_devices-1; i >= 0; i--) {
 		// Command queue
 		que_memRd[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue 0");
@@ -378,13 +378,13 @@ int main(int argc, char** argv)
 
 		knl_lrn[i] = clCreateKernel(program, knl_name_lrn, &status);
 		checkError(status, "Failed to create lrn kernel");
-#ifdef CASCADE
+
 		knl_ser[i] = clCreateKernel(program, knl_name_ser, &status);
 		checkError(status, "Failed to create ser kernel");
 
 		knl_deser[i] = clCreateKernel(program, knl_name_deser, &status);
 		checkError(status, "Failed to create deser kernel");
-#endif
+
 		// Mems
 		// Create weight and bias buffers for each layer
 		for(unsigned j = 0; j < LAYER_NUM; ++j){
@@ -511,10 +511,8 @@ int main(int argc, char** argv)
 	scoped_array<cl_event> pool_event(num_devices);
 	scoped_array<cl_event> memWr_event(num_devices);
 	scoped_array<cl_event> lrn_event(num_devices);
-#ifdef CASCADE
 	scoped_array<cl_event> ser_event(num_devices);
 	scoped_array<cl_event> deser_event(num_devices);
-#endif
 
 	// Recorde the excution time of each operation for each layer
 #ifndef USE_OPENCV
@@ -523,10 +521,8 @@ int main(int argc, char** argv)
 	cl_ulong pool_time[LAYER_NUM];
 	cl_ulong memRd_time[LAYER_NUM];
 	cl_ulong lrn_time[LAYER_NUM];
-#ifdef CASCADE
 	cl_ulong ser_time[LAYER_NUM];
 	cl_ulong deser_time[LAYER_NUM];
-#endif
 #endif
 
 	unsigned       iter_num;
@@ -549,7 +545,7 @@ int main(int argc, char** argv)
 	unsigned int   pic_num =1;
 
 	// Kernel excutions main loops
-	for(unsigned i = 0; i < num_devices; ++i) {
+	for(unsigned i = num_devices-1; i >= 0; i--) {
 
 #ifdef USE_OPENCV
 		// Run PipeCNN for multiple input pictures
@@ -562,7 +558,8 @@ int main(int argc, char** argv)
 
 		// Each iteration excutes one layer convolution
 		// MemRd -> Conv(Relu) -> (MaxPool) -> MemWr -> (Lrn)
-		for(unsigned char j = 0; j < LAYER_NUM; ++j){
+		assigned_layers[i][layers_per_device[i]-1]-1
+		for(unsigned char j = assigned_layers[i][0]-1; j <= assigned_layers[i][layers_per_device[i]-1]-1; j++){
 
 #ifndef USE_OPENCV
 			memWr_time[j] =0;
@@ -615,8 +612,7 @@ int main(int argc, char** argv)
 
 			// Before setting the memRead kernel arguments, we have to set the arguments for the
 			// deserializer
-#ifdef CASCADE
-			if (j != 0) {
+			if (j == assigned_layers[i][0]-1 && j != 0) {
 				if (layer_config[j-1][lrn_on]) {
 					argi = 0;
 		
@@ -658,7 +654,6 @@ int main(int argc, char** argv)
 					}	
 				}
 			}
-#endif	
 
 			argi = 0;
 
@@ -914,48 +909,49 @@ int main(int argc, char** argv)
 			pool_dim3_div_VecSize = layer_config[j][pool_z] / VEC_SIZE;
             conv_dim3_div_VecSize = layer_config[j][conv_z] / VEC_SIZE;
 
-#ifdef CASCADE
-			if (layer_config[j][lrn_on]) {
-				argi = 0;
 
-				status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_uchar), &layer_config[j][pool_x]);
-				checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
+            if (j == assigned_layers[i][layers_per_device[i]-1]-1 && j != LAYER_NUM-1) {
+				if (layer_config[j][lrn_on]) {
+					argi = 0;
+
+					status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_uchar), &layer_config[j][pool_x]);
+					checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
 				
-				status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_uchar), &layer_config[j][pool_y]);
-				checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
-
-				status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_ushort), &pool_dim3_div_VecSize);
-				checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
-
-				status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_mem), &(data_buf[i*input_config[batch_size]+k]));
-				checkError(status, "Failed to set argument %d of kernel ser", argi - 1);	
-			} else {
-				argi = 0;
-
-				status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_uchar), &layer_config[j][conv_x]);
-				checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
-
-				status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_uchar), &layer_config[j][conv_y]);
-				checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
-
-				status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_ushort), &conv_dim3_div_VecSize);
-				checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
-
-				if (layer_config[j][memwr_dst] == 0) {
-					status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_mem), &data_buf[i*input_config[batch_size]+k]);
+					status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_uchar), &layer_config[j][pool_y]);
 					checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
-				} else if (layer_config[j][memwr_dst] == 1) {
-					status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_mem), &output_buf[i*input_config[batch_size]+k]);
+
+					status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_ushort), &pool_dim3_div_VecSize);
 					checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
-				} else if (layer_config[j][memwr_dst] == 2) {
-					status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_mem), &fc_1_buf[i]);
-					checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
+
+					status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_mem), &(data_buf[i*input_config[batch_size]+k]));
+					checkError(status, "Failed to set argument %d of kernel ser", argi - 1);	
 				} else {
-					status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_mem), &fc_2_buf[i]);
+					argi = 0;
+
+					status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_uchar), &layer_config[j][conv_x]);
 					checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
+
+					status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_uchar), &layer_config[j][conv_y]);
+					checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
+
+					status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_ushort), &conv_dim3_div_VecSize);
+					checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
+
+					if (layer_config[j][memwr_dst] == 0) {
+						status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_mem), &data_buf[i*input_config[batch_size]+k]);
+						checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
+					} else if (layer_config[j][memwr_dst] == 1) {
+						status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_mem), &output_buf[i*input_config[batch_size]+k]);
+						checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
+					} else if (layer_config[j][memwr_dst] == 2) {
+						status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_mem), &fc_1_buf[i]);
+						checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
+					} else {
+						status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_mem), &fc_2_buf[i]);
+						checkError(status, "Failed to set argument %d of kernel ser", argi - 1);
+					}
 				}
 			}
-#endif
 
 #ifdef USE_SDX_1DDR
 			// Wait until all data are send to DDR memory
@@ -972,15 +968,14 @@ int main(int argc, char** argv)
 			if(k == 0&&pic_num==1)
 				printf("\nLaunching single work-item kernel winbuffer\n");
 
-#ifdef CASCADE
 			// Issue the deserializer if this is not the first layer
-			if (j != 0) {
+			if (j == assigned_layers[i][0]-1 && j != 0) {
 				status = clEnqueueTask(que_memRd[i], knl_deser[i], 0, NULL, &deser_event[i]);
 				checkError(status, "Failed to launch kernel ser");
 				if(k == 0 && pic_num == 1) 
 					printf ("\nLaunching single work-item kernel deserializer\n");
 			}
-#endif
+
 			status = clEnqueueTask(que_memRd[i], knl_memRd[i], 0, NULL, &memRd_event[i]);
 			checkError(status, "Failed to launch kernel memRD kernel");
 
@@ -1036,12 +1031,12 @@ int main(int argc, char** argv)
 				checkError(status, "Failed to launch kernel lrn");
 			}
 	
-#ifdef CASCADE
 			if (k == 0 && pic_num == 1) 
 				printf ("\nLaunching single work-item kernel serializer\n");
-			status = clEnqueueTask(que_memWr[i], knl_ser[i], 0, NULL, &ser_event[i]);
-			checkError(status, "Failed to launch kernel deser");
-#endif
+			if (j == assigned_layers[i][layers_per_device[i]-1]-1 && j != LAYER_NUM-1) {
+				status = clEnqueueTask(que_memWr[i], knl_ser[i], 0, NULL, &ser_event[i]);
+				checkError(status, "Failed to launch kernel deser");
+			}
 			// Wait for all kernel to finish
 			if(layer_config[j][lrn_on]){
 				status = clWaitForEvents(num_devices, lrn_event);
@@ -1051,17 +1046,15 @@ int main(int argc, char** argv)
 				status = clWaitForEvents(num_devices, memWr_event);
 				checkError(status, "Failed to finish memWR event");
 			}
-#ifdef CASCADE
-			status = clWaitForEvents(num_devices, ser_event);
-			checkError(status, "Failed to finish ser event");
-#endif
+			if (assigned_layers[i][layers_per_device[i]-1]-1 && j != LAYER_NUM-1) {
+				status = clWaitForEvents(num_devices, ser_event);
+				checkError(status, "Failed to finish ser event");
+			}
 
 #ifndef USE_OPENCV
 			// Profile mode, get excution time for each kernel
-#ifdef CASCADE
-			if (j != 0)
+			if (j == assigned_layers[i][0]-1 && j != 0)
 				deser_time[j] += getKernelStartEndTime(deser_event[i], "deser");
-#endif
 			memRd_time[j] += getKernelStartEndTime(memRd_event[i], "memRd");
 			conv_time[j]  += getKernelStartEndTime(conv_event[i], "conv");
 			if(layer_config[j][pool_on])
@@ -1069,9 +1062,8 @@ int main(int argc, char** argv)
 			memWr_time[j] += getKernelStartEndTime(memWr_event[i], "memWr");
 			if(layer_config[j][lrn_on])
 				lrn_time[j] += getKernelStartEndTime(lrn_event[i], "lrn");
-#ifdef CASCADE
-			ser_time[j] += getKernelStartEndTime(ser_event[i], "ser");
-#endif
+			if (j == assigned_layers[i][layers_per_device[i]-1]-1 && j != LAYER_NUM-1)
+				ser_time[j] += getKernelStartEndTime(ser_event[i], "ser");
 #endif
 
 			// Must release event object to avoid performance degeneration !!!
@@ -1089,14 +1081,16 @@ int main(int argc, char** argv)
 				status = clReleaseEvent(lrn_event[i]);
 				checkError(status, "Failed to release lrn event object");
 			}
-#ifdef CASCADE
-			status = clReleaseEvent(ser_event[i]);
-			checkError(status, "Failed to release ser event object");
-			if (j != 0) {
+
+			if (j == assigned_layers[i][0]-1 && j != 0) {
+				status = clReleaseEvent(ser_event[i]);
+				checkError(status, "Failed to release ser event object");
+			}
+			if (j == assigned_layers[i][layers_per_device[i]-1]-1 && j != LAYER_NUM-1) {
 				status = clReleaseEvent(deser_event[i]);
 				checkError(status, "Failed to release deser event object");
 			}
-#endif
+
 
 
 			}// end of batch iteration
@@ -1109,8 +1103,10 @@ int main(int argc, char** argv)
 #ifdef USE_OPENCV
 		printf("Done! Inference time is %fs \n", time);
 #endif
-		readDataBack();
-		verifyResult(pic_num);
+		if (j == LAYER_NUM-1) {
+			readDataBack();
+			verifyResult(pic_num);
+		}
 
 #ifdef USE_OPENCV
 			getAccuracy(output_reorder,pic_num);
@@ -1185,26 +1181,26 @@ void readDataBack()
 	// For the last conv layer and all fc layers, read result from one of the fc buffers
 	if(layer_config[LAYER_NUM-1][memwr_dst] == 2){
 		printf("\nCopyed all batched results from fc_1 buffers.\n");
-		status = clEnqueueReadBuffer(que_memWr[0], fc_1_buf[0], CL_FALSE,          // read from device0
+		status = clEnqueueReadBuffer(que_memWr[num_devices-1], fc_1_buf[0], CL_FALSE,          // read from device0
 			0, sizeof(DTYPE) * read_buf_size, (void *)output, 0, NULL, &finish_event[0]);
 		checkError(status, "Failed to set transfer output data");
 	}
 	else if(layer_config[LAYER_NUM-1][memwr_dst] == 3){
 		printf("\nCopyed all batched results from fc_2 buffers.\n");
-		status = clEnqueueReadBuffer(que_memWr[0], fc_2_buf[0], CL_FALSE,          // read from device0
+		status = clEnqueueReadBuffer(que_memWr[num_devices-1], fc_2_buf[0], CL_FALSE,          // read from device0
 			0, sizeof(DTYPE) * read_buf_size, (void *)output, 0, NULL, &finish_event[0]);
 		checkError(status, "Failed to set transfer output data");
 	}
 	// For other layers, read results from data and output buffers
 	else if(layer_config[LAYER_NUM-1][memwr_dst]^layer_config[LAYER_NUM-1][lrn_on]){// if lrn is used, the mem dst is changed back to src
 		printf("\nCopyed one result from NO.%d output buffers.\n", batch_item_num);
-		status = clEnqueueReadBuffer(que_memWr[0], output_buf[batch_item_num], CL_FALSE,         // read from device0
+		status = clEnqueueReadBuffer(que_memWr[num_devices-1], output_buf[batch_item_num], CL_FALSE,         // read from device0
 			0, sizeof(DTYPE) * read_buf_size, (void *)output, 0, NULL, &finish_event[0]);
 		checkError(status, "Failed to set transfer output data");
 	}
 	else{
 		printf("\nCopyed one results from NO.%d data buffers.\n", batch_item_num);
-		status = clEnqueueReadBuffer(que_memWr[0], data_buf[batch_item_num], CL_FALSE,           // read from device0
+		status = clEnqueueReadBuffer(que_memWr[num_devices-1], data_buf[batch_item_num], CL_FALSE,           // read from device0
 			0, sizeof(DTYPE) * read_buf_size, (void *)output, 0, NULL, &finish_event[0]);
 		checkError(status, "Failed to set transfer output data");
 	}
@@ -1333,18 +1329,18 @@ void loadImageToBuffer(int num)
 		}
 	}
 
-	for(unsigned i = 0; i < num_devices; ++i) {
+	if (assigned_layers[0][0] == 1){
 		// Create data buffers for each batch item
 		for(unsigned j = 0; j < input_config[batch_size]; ++j){
 #if defined(USE_SDX_1DDR)
-			clEnqueueMigrateMemObjects(que_memRd[i],1, &data_buf[i*input_config[batch_size]+j], 0 /* flags, 0 means from host*/,0, NULL,&write_event[i]);
+			clEnqueueMigrateMemObjects(que_memRd[0],1, &data_buf[j], 0 /* flags, 0 means from host*/,0, NULL,&write_event[i]);
 #elif defined(USE_SDX_4DDR)
 			// Load image data into buffers
-			status = clEnqueueWriteBuffer(que_memRd[i], data_buf[i*input_config[batch_size]+j], CL_TRUE, 0, (layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]) * sizeof(DTYPE), data_init, 0, NULL, NULL);
+			status = clEnqueueWriteBuffer(que_memRd[0], data_buf[j], CL_TRUE, 0, (layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]) * sizeof(DTYPE), data_init, 0, NULL, NULL);
 			checkError(status, "Failed to transfer input image");
 #else
 			// Load image data into buffers
-			status = clEnqueueWriteBuffer(que_memRd[i], data_buf[i*input_config[batch_size]+j], CL_TRUE, 0, (layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]) * sizeof(DTYPE), data_init, 0, NULL, NULL);
+			status = clEnqueueWriteBuffer(que_memRd[0], data_buf[j], CL_TRUE, 0, (layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]) * sizeof(DTYPE), data_init, 0, NULL, NULL);
 			checkError(status, "Failed to transfer input image");
 #endif
 		}
