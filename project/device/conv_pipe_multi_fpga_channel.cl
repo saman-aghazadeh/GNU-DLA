@@ -75,8 +75,8 @@ channel channel_scal   bias_ch    __attribute__((depth(8)));
 channel channel_scal   conv_ch    __attribute__((depth(CHN_DEPTH)));
 channel channel_scal   pool_ch    __attribute__((depth(CHN_DEPTH)));
 channel channel_scal   bypass_ch  __attribute__((depth(CHN_DEPTH)));
-channel ulong4      ser_ch     __attribute__((depth(4))) __attribute__((io("kernel_output_ch1")));
-channel ulong4      deser_ch   __attribute__((depth(4))) __attribute__((io("kernel_input_ch0")));
+channel ulong4      ser_ch     __attribute__((depth(4))) __attribute__((io("kernel_output_ch0")));
+channel ulong4      deser_ch   __attribute__((depth(4))) __attribute__((io("kernel_input_ch1")));
 
 
 // parallel MAC units including (VEC_SIZE-1) multipliers

@@ -259,7 +259,8 @@ void memRead(
 
 				#pragma ivdep array(win_buffer)
 				#pragma ivdep array(weight_buffer)
-				Item:for(unsigned int  win_itm_xyz=0; win_itm_xyz<item_loop_bound; win_itm_xyz++){
+				//Item:for(unsigned int  win_itm_xyz=0; win_itm_xyz<item_loop_bound; win_itm_xyz++){
+				for(unsigned int win_itm_xyz = 0; win_itm_xyz < item_loop_bound; win_itm_xyz++) {
 
 							// Winbuffer loading operations
 							if(win_itm_z<weight_dim3/VEC_SIZE){
@@ -889,13 +890,6 @@ void lrn(
 				for (unsigned char ll = 0; ll < VEC_SIZE; ll++) {
 					temp.data[ll] = top[global_z*data_dim2*data_dim1 + global_y*data_dim1 * global_x].data[ll];
 				}
-				printf ("[LRN] at x=%d,y=%d,z=%d = [", global_x, global_y, global_z);
-				
-				#pragma unroll
-				for (unsigned char i = 0; i < VEC_SIZE; i++) {
-					printf ("%d,", temp.data[i]);
-				}
-				printf ("]\n");
 			}
 		}
 	}
@@ -921,8 +915,6 @@ void lrnSer(
 		)
 
 {	
-
-	printf ("\n[Serializer] data_dim1=%d, data_dim2=%d, data_dim3=%d\n", data_dim1, data_dim2, data_dim3);
 
 	for (unsigned short dim3 = 0; dim3 < data_dim3; dim3++) {
 		for (unsigned char dim2 = 0; dim2 < data_dim2; dim2++) {
@@ -953,7 +945,6 @@ void memReadDeser(
 
 {
 
-	printf ("\n[Deserializer] data_dim1=%d, data_dim2=%d, data_dim3=%d\n", data_dim1, data_dim2, data_dim3);
 
 	for (unsigned short dim3 = 0; dim3 < data_dim3; dim3++) {
 		for (unsigned char dim2 = 0; dim2 < data_dim2; dim2++) {
