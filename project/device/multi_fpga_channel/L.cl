@@ -617,7 +617,7 @@ void memWrite(
 
 
 __kernel
-__attribute__((max_work_group_size(LRN_MAX_LOCAL_SIZE, 1, 1)))
+__attribute__((max_work_group_size(1, 1, LRN_MAX_LOCAL_SIZE)))
 void lrn(
 			// Params Ports
 			uchar data_dim1,

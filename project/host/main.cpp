@@ -1008,15 +1008,15 @@ int main(int argc, char** argv)
 #endif
 			// Wait for all kernel to finish
 			if(layer_config[j][lrn_on]){
-				status = clWaitForEvents(num_devices, lrn_event);
+				status = clWaitForEvents(1, &lrn_event[i]);
 				checkError(status, "Failed to finish lrn event");
 			}
 			else{
-				status = clWaitForEvents(num_devices, memWr_event);
+				status = clWaitForEvents(1, &(memWr_event[i]));
 				checkError(status, "Failed to finish memWR event");
 			}
 #ifdef CASCADE
-			status = clWaitForEvents(num_devices, ser_event);
+			status = clWaitForEvents(1, &(ser_event[i]));
 			checkError(status, "Failed to finish ser event");
 #endif
 
