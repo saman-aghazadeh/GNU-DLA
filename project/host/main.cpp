@@ -67,7 +67,7 @@ const char *vendor_name = "Intel";
 #define PICTURE_NUM 8000
 #define MAX_PIC_NUM 50000
 
-#define VERBOSE_OUTPUT
+// #define VERBOSE_OUTPUT
 const char *mean_data_file_path    = "./data/imagenet/mean_data.dat";
 const char *synset_word_file_path  = "./data/imagenet/synset_words.txt";
 const char *LabelPath		       = "./data/imagenet/val.txt";
@@ -519,7 +519,7 @@ int main(int argc, char** argv)
 	// Kernel excutions main loops
 	for(unsigned i = 0; i < 1; ++i) {
 	
-	for (int iter = 0; iter < 1; iter++) {
+	for (int iter = 0; iter < 10; iter++) {
 
 #ifdef USE_OPENCV
 		// Run PipeCNN for multiple input pictures
@@ -700,7 +700,6 @@ int main(int argc, char** argv)
 			// Select the kernel input mem object source
 			// data_buf -> conv1 -> output_buf -> lrn1 -> data_buf -> conv2 -> output_buf -> lrn2 -> data_buf
 			// -> conv3 -> output_buf -> conv4 -> output_buf -> ...
-			printf ("Some value is %d\n", i*input_config[batch_size]+k);
 			if(layer_config[j][memrd_src]==0){
 				status = clSetKernelArg(knl_memRd[i], argi++, sizeof(cl_mem), &data_buf[i*input_config[batch_size]+k]);
 				checkError(status, "Failed to set argument %d of kernel memRd", argi - 1);
@@ -1041,7 +1040,6 @@ int main(int argc, char** argv)
 					printf("\nLaunching kernel lrn with local size: %d, %d, %d  (global size: %d, %d, %d)\n", (int)knl_lrn_local_size[0], (int)knl_lrn_local_size[1], (int)knl_lrn_local_size[2], (int)knl_lrn_global_size[0], (int)knl_lrn_global_size[1], (int)knl_lrn_global_size[2]);
 
 				status = clEnqueueNDRangeKernel(que_memWr[i], knl_lrn[i], 3, NULL, knl_lrn_global_size, knl_lrn_local_size, 0, NULL, &lrn_event[i]);
-				printf ("status = %d\n", status);
 				checkError(status, "Failed to launch kernel lrn");
 			}
 	

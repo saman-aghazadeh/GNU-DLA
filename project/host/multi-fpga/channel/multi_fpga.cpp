@@ -177,8 +177,8 @@ const char *knl_name_deser = "memReadDeser";
 cl_uint num_devices = 0;
 int num_involved_devices = 0;
 cl_platform_id platform_id = NULL;
-cl_context context = NULL;
-cl_program program = NULL;
+scoped_array<cl_context> context;
+scoped_array<cl_program> program;
 scoped_array<cl_device_id> device;
 scoped_array<cl_kernel> knl_memRd;
 scoped_array<cl_kernel> knl_conv;
@@ -295,17 +295,22 @@ int main(int argc, char** argv)
 		printf("  Device %d: %s\n", i, getDeviceName(device[i]).c_str());
 		displayDeviceInfo(device[i]);
 	}
-
+	context.reset(num_devices);
+	program.reset(num_devices);
 
 	// Create the context.
-	context = clCreateContext(NULL, num_devices, device, NULL, NULL, &status);
-	checkError(status, "Failed to create context");
+	context[0] = clCreateContext(NULL, 1, &(device[0]), NULL, NULL, &status);
+	checkError(status, "Failed to create context 0");
+
+	context[1] = clCreateContext(NULL, 1, &(device[1]), NULL, NULL, &status);
+	checkError(status, "Failed to create context 1");
 
 	// Create Program Objects
 	char *kernel_file_name=argv[1];
 
 	// Create the program for all device. All devices execute the same kernel.
-	program = createProgramFromFile(context, (const char *) kernel_file_name, device, num_devices);
+	program[0] = createProgramFromFile(context[0], (const char *) kernel_file_name, &(device[0]), 1);
+	program[1] = createProgramFromFile(context[1], (const char *) kernel_file_name, &(device[1]), 1);
 
 	if (argc >= num_devices + 3 || argc <= 2) {
 		printf ("[ERROR] Yo, you have to provide me which layers to handle.\n");
@@ -386,36 +391,36 @@ int main(int argc, char** argv)
 		
 		printf ("[INFO] Creating queues for the " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "\n", i);
 		// Command queue
-		que_memRd[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
+		que_memRd[i] = clCreateCommandQueue(context[i], device[i], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue 0");
-		que_conv[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
+		que_conv[i] = clCreateCommandQueue(context[i], device[i], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue 1");
-		que_memWr[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
+		que_memWr[i] = clCreateCommandQueue(context[i], device[i], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue 2");
-		que_pool[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
+		que_pool[i] = clCreateCommandQueue(context[i], device[i], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue 3");
 		
 		printf ("[INFO] Creating kernels for the " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "\n", i);
 		// Kernel
-		knl_memRd[i] = clCreateKernel(program, knl_name_memRd, &status);
+		knl_memRd[i] = clCreateKernel(program[i], knl_name_memRd, &status);
 		checkError(status, "Failed to create memRd kernel");
 
-		knl_conv[i] = clCreateKernel(program, knl_name_conv, &status);
+		knl_conv[i] = clCreateKernel(program[i], knl_name_conv, &status);
 		checkError(status, "Failed to create conv kernel");
 
-		knl_pool[i] = clCreateKernel(program, knl_name_Pool, &status);
+		knl_pool[i] = clCreateKernel(program[i], knl_name_Pool, &status);
 		checkError(status, "Failed to create pooling kernel");
 
-		knl_memWr[i] = clCreateKernel(program, knl_name_memWr, &status);
+		knl_memWr[i] = clCreateKernel(program[i], knl_name_memWr, &status);
 		checkError(status, "Failed to create memWr kernel");
 
-		knl_lrn[i] = clCreateKernel(program, knl_name_lrn, &status);
+		knl_lrn[i] = clCreateKernel(program[i], knl_name_lrn, &status);
 		checkError(status, "Failed to create lrn kernel");
 
-		knl_ser[i] = clCreateKernel(program, knl_name_ser, &status);
+		knl_ser[i] = clCreateKernel(program[i], knl_name_ser, &status);
 		checkError(status, "Failed to create ser kernel");
 
-		knl_deser[i] = clCreateKernel(program, knl_name_deser, &status);
+		knl_deser[i] = clCreateKernel(program[i], knl_name_deser, &status);
 		checkError(status, "Failed to create deser kernel");
 
 		// Mems
@@ -426,11 +431,11 @@ int main(int argc, char** argv)
 
 			weight_buf_size = layer_config[j][weight_w]*layer_config[j][weight_h]*layer_config[j][weight_n]*layer_config[j][weight_m];
 			// Weights buffers for each layer
-			weights_buf[i*LAYER_NUM+j] = clCreateBuffer(context, CL_MEM_READ_ONLY, weight_buf_size* sizeof(DTYPE), NULL, &status);
+			weights_buf[i*LAYER_NUM+j] = clCreateBuffer(context[i], CL_MEM_READ_ONLY, weight_buf_size* sizeof(DTYPE), NULL, &status);
 			checkError(status, "Failed to create buffer for weights in layer");
 
 			// Bias buffers for each layer
-			bias_buf[i*LAYER_NUM+j] = clCreateBuffer(context, CL_MEM_READ_ONLY, layer_config[j][bias_size] * sizeof(DTYPE), NULL, &status);
+			bias_buf[i*LAYER_NUM+j] = clCreateBuffer(context[i], CL_MEM_READ_ONLY, layer_config[j][bias_size] * sizeof(DTYPE), NULL, &status);
 			checkError(status, "Failed to create buffer for bias in layer");
 
 			// Initializing all weights buffers, blocking write is used
@@ -445,21 +450,21 @@ int main(int argc, char** argv)
 		// Create data buffers for each batch item
 		for(unsigned j = 0; j < input_config[batch_size]; ++j){
 			// Input data buffers
-			data_buf[i*input_config[batch_size]+j] = clCreateBuffer(context, CL_MEM_READ_WRITE, IN_BUF_SIZE * sizeof(DTYPE), NULL, &status);
+			data_buf[i*input_config[batch_size]+j] = clCreateBuffer(context[i], CL_MEM_READ_WRITE, IN_BUF_SIZE * sizeof(DTYPE), NULL, &status);
 			checkError(status, "Failed to create buffer for data in layer");
 
 			// Output results buffers
-			output_buf[i*input_config[batch_size]+j] = clCreateBuffer(context, CL_MEM_READ_WRITE, OUT_BUF_SIZE * sizeof(DTYPE), NULL, &status);
+			output_buf[i*input_config[batch_size]+j] = clCreateBuffer(context[i], CL_MEM_READ_WRITE, OUT_BUF_SIZE * sizeof(DTYPE), NULL, &status);
 			checkError(status, "Failed to create buffer for output");
 
 		}
 		
 		printf ("[INFO] Creating FC buffers for the " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "\n", i);
 		// Allocate fc buffers
-		fc_1_buf[i] = clCreateBuffer(context,  CL_MEM_READ_WRITE, FC_BUF_SIZE * sizeof(DTYPE), NULL, &status);
+		fc_1_buf[i] = clCreateBuffer(context[i],  CL_MEM_READ_WRITE, FC_BUF_SIZE * sizeof(DTYPE), NULL, &status);
 		checkError(status, "Failed to create buffer for data in fc layer");
 
-		fc_2_buf[i] = clCreateBuffer(context,  CL_MEM_READ_WRITE, FC_BUF_SIZE * sizeof(DTYPE), NULL, &status);
+		fc_2_buf[i] = clCreateBuffer(context[i],  CL_MEM_READ_WRITE, FC_BUF_SIZE * sizeof(DTYPE), NULL, &status);
 		checkError(status, "Failed to create buffer for data in fc layer");
 
 		printf ("\n");
@@ -1421,10 +1426,12 @@ void cleanup()
 	}
 
 	if(program) {
-		clReleaseProgram(program);
+		clReleaseProgram(program[0]);
+		clReleaseProgram(program[1]);	
 	}
 	if(context) {
-		clReleaseContext(context);
+		clReleaseContext(context[0]);
+		clReleaseContext(context[1]);
 	}
 
 	alignedFree(weights);
@@ -1516,7 +1523,7 @@ void* device_runner (void* args) {
 	// Each iteration excutes one layer convolution
 	// MemRd -> Conv(Relu) -> (MaxPool) -> MemWr -> (Lrn)
 	
-	// for (int iter = 0; iter < 10; iter++) {
+	for (int iter = 0; iter < 10; iter++) {
 
 	printf ("[INFO] Start Processing layers " ANSI_COLOR_GREEN "%d-%d " ANSI_COLOR_RESET "for " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "\n", assigned_layers[i][0], assigned_layers[i][layers_per_device[i]-1], i);
 	for(unsigned char j = assigned_layers[i][0]-1; j <= assigned_layers[i][layers_per_device[i]-1]-1; j++){
@@ -2141,17 +2148,34 @@ void* device_runner (void* args) {
 		printf ("[INFO] Waiting for the kernels for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "\n", i);			
 
 		// Wait for all kernel to finish
+		status = clWaitForEvents(1, &(memRd_event[i]));
+		checkError(status, "Failed to finish memrd event");
+		printf ("[INFO] MEMRD event is done for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "\n", i);
+
+		status = clWaitForEvents(1, &(conv_event[i]));
+		checkError(status, "Failed to finish conv event");
+		printf ("[INFO] CONV event is done for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "\n", i);
+
+		if (layer_config[j][pool_on]) {
+			status = clWaitForEvents(1, &(pool_event[i]));
+			checkError(status, "Failed to finish pool event");
+			printf ("[INFO]POOL event is done for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "\n", i);
+		}
+	
 		if(layer_config[j][lrn_on]){
 			status = clWaitForEvents(1, &(lrn_event[i]));
 			checkError(status, "Failed to finish lrn event");
+			printf ("[INFO] LRN event is done for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "\n", i);
 		}
 		else{
 			status = clWaitForEvents(1, &(memWr_event[i]));
 			checkError(status, "Failed to finish memWR event");
+			printf ("[INFO] MEMWR event is done for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "\n", i);
 		}
 		if (j == assigned_layers[i][layers_per_device[i]-1]-1 && j != LAYER_NUM-1) {
 			status = clWaitForEvents(1, &(ser_event[i]));
 			checkError(status, "Failed to finish ser event");
+			printf ("[INFO] SER event is done for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "\n", i);
 		}
 
 #ifndef USE_OPENCV
@@ -2195,6 +2219,8 @@ void* device_runner (void* args) {
 		}
 
 
+		printf ("[INFO] End of " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_GREEN "LAYER %d\n" ANSI_COLOR_RESET, i, j);
+
 	}// end of layer iteration
 	printf ("\n");
 
@@ -2216,7 +2242,8 @@ void* device_runner (void* args) {
 	printf("\n\n");
 #endif
 
-	//}
+	}
+
 
 }
 
