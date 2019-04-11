@@ -400,7 +400,7 @@ char precision_config[][3] ={{8,  0, -4},//Layer-1
 							{10,  2,  2}//Layer-8
 							};
 
-unsigned input_config[5] = {227, 227, 3, 1}; //original image size(dim1, dim2, dim3), batch size
+unsigned input_config[4] = {227, 227, 3, 1}; //original image size(dim1, dim2, dim3), batch size
 
 //unsigned output_config[3] = {27, 27, 96};//Layer-1
 //unsigned output_config[3] = {55, 55, 96};//Layer-1

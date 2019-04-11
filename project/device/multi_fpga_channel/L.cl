@@ -14,25 +14,33 @@ void memReadDeser(
 	uchar  data_dim2,
 	ushort data_dim3,
 	// Data Ports
-	__global lane_data *restrict top
+	__global ulong4 *restrict top
 	)
 
 {
-	ulong4 test;
+
+	int total_size = data_dim3 * data_dim2 * data_dim1;
+	total_size = ((total_size + 31) / 32);
+
+	for (int i = 0; i < total_size; i += 1) {
+		ulong4 buf;
+		buf = read_channel_intel (deser_ch);
+		top[i] = buf;
+	}
+
+/*
 	for (unsigned short dim3 = 0; dim3 < data_dim3; dim3++) {
 		for (unsigned char dim2 = 0; dim2 < data_dim2; dim2++) {
 			for (unsigned char dim1 = 0; dim1 < data_dim1; dim1++) {
-				lane_data buf;
+				ulong4 buf;
 
-				test = (ulong4) read_channel_intel (deser_ch);
+				buf = read_channel_intel (deser_ch);
 
-				#pragma unroll
-				for (unsigned char ll = 0; ll < VEC_SIZE; ll++)
-					top[dim3*data_dim2*data_dim1 + dim2*data_dim1 + dim1].data[ll] = buf.data[ll];
+				top[dim3*data_dim2*data_dim1 + dim2*data_dim1 + dim1] = buf;
 			}
 		}
 	}
-
+*/
 }
 
 // Fetch Data from Global Memory
@@ -737,6 +745,7 @@ void lrn(
 	}
 	top[global_z*data_dim2*data_dim1 + global_y*data_dim1 + global_x] = data_out_partial;
 
+/*
     if (global_z >= 0 && global_z <= 3) {
         if (global_y >= 0 && global_y <= 3) {
             if (global_x >= 0 && global_x <= 3) {
@@ -756,7 +765,7 @@ void lrn(
             }
         }
     }
-	
+*/	
 	#ifdef DEBUG_LRN_OUT
 	if(global_z==0&&global_x==0&&global_y==0)
 	printf("\nKernel LRN OUT: x=%d, y=%d, z=%d, result=%f\n", global_x, global_y, global_z, (float)data_out_partial.data[0]);
@@ -773,29 +782,31 @@ void lrnSer(
 		uchar  data_dim2,
 		ushort data_dim3,
 		// Data Ports
-		__global lane_data *restrict bottom
+		__global ulong4 *restrict bottom
 		)
 
 {	
+	int total_size = data_dim3 * data_dim2 * data_dim1;
+	total_size = ((total_size + 31) / 32);
 
-	ulong4 test;
-	test.s0 = 1;
-	test.s1 = 2;
-	test.s2 = 3;
-	test.s3 = 4;
+	//printf ("total_size is %d\n", total_size);
+	
+	for (int i = 0; i < total_size; i += 1) {
+		ulong4 buf = bottom[i];
+
+		write_channel_intel (ser_ch, buf);
+	}
+
+/*
 	for (unsigned short dim3 = 0; dim3 < data_dim3; dim3++) {
 		for (unsigned char dim2 = 0; dim2 < data_dim2; dim2++) {
 			for (unsigned char dim1 = 0; dim1 < data_dim1; dim1++) {
-				lane_data buf;
+				ulong4 buf;
 
-				#pragma unroll
-				for (unsigned char ll = 0; ll < VEC_SIZE; ll++)
-					buf.data[ll] = bottom[dim3*data_dim2*data_dim1 + dim2*data_dim1 + dim1].data[ll];
-
-				
-				write_channel_intel (ser_ch, (ulong4)test);
+				buf = bottom[dim3*data_dim2*data_dim1 + dim2*data_dim1 + dim1];
+				write_channel_intel (ser_ch, buf);
 			}
 		}
 	}
-
+*/
 }

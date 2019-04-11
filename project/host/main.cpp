@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <sys/time.h>
 
 #include <iostream>
 #include <fstream>
@@ -65,6 +66,8 @@ const char *vendor_name = "Intel";
 #define MEAN_DATA_CHANNEl 3
 #define PICTURE_NUM 8000
 #define MAX_PIC_NUM 50000
+
+#define VERBOSE_OUTPUT
 const char *mean_data_file_path    = "./data/imagenet/mean_data.dat";
 const char *synset_word_file_path  = "./data/imagenet/synset_words.txt";
 const char *LabelPath		       = "./data/imagenet/val.txt";
@@ -218,6 +221,7 @@ void reorderOutput(DTYPE *output, DTYPE *output_reorder, unsigned dim1, unsigned
 void extractOutput(DTYPE *output, DTYPE *output_one_item, unsigned item_num, unsigned batch_size, unsigned dim1, unsigned dim2, unsigned dim3);
 void softmax(DTYPE *output_reorder , DTYPE *output);
 int getProb(DTYPE *output);
+void printCurrentTime();
 void cleanup();
 
 
@@ -511,8 +515,11 @@ int main(int argc, char** argv)
 	unsigned short conv_dim3_div_VecSize;
 	unsigned int   pic_num =1;
 
+
 	// Kernel excutions main loops
-	for(unsigned i = 0; i < num_devices; ++i) {
+	for(unsigned i = 0; i < 1; ++i) {
+	
+	for (int iter = 0; iter < 1; iter++) {
 
 #ifdef USE_OPENCV
 		// Run PipeCNN for multiple input pictures
@@ -693,6 +700,7 @@ int main(int argc, char** argv)
 			// Select the kernel input mem object source
 			// data_buf -> conv1 -> output_buf -> lrn1 -> data_buf -> conv2 -> output_buf -> lrn2 -> data_buf
 			// -> conv3 -> output_buf -> conv4 -> output_buf -> ...
+			printf ("Some value is %d\n", i*input_config[batch_size]+k);
 			if(layer_config[j][memrd_src]==0){
 				status = clSetKernelArg(knl_memRd[i], argi++, sizeof(cl_mem), &data_buf[i*input_config[batch_size]+k]);
 				checkError(status, "Failed to set argument %d of kernel memRd", argi - 1);
@@ -794,11 +802,13 @@ int main(int argc, char** argv)
 
 			if(j==(CONV_NUM-1)){ // For last Conv Layer, combine all batch data into one fc buffer
 				if(input_config[batch_size]==1){
+					printf ("in if\n");
 					batch_size_in_dim = 1;
 					batch_indx_dim1 = 0;
 					batch_indx_dim2 = 0;
 				}
 				else{
+					printf ("in else\n");
 					batch_size_in_dim = log(input_config[batch_size])/log(2);
 					batch_size_in_dim_log = log(batch_size_in_dim)/log(2);
 					batch_indx_dim1 = k&(~((mask>>batch_size_in_dim_log)<<batch_size_in_dim_log));
@@ -981,6 +991,41 @@ int main(int argc, char** argv)
 #endif
 			checkError(status, "Failed to launch kernel memWr");
 
+#ifdef VERBOSE_OUTPUT                                                                                             
+
+			int outputsize = 0;
+		        if (layer_config[j][lrn_on]) {
+				outputsize = layer_config[j][pool_x] * layer_config[j][pool_y] * layer_config[j][pool_z];
+			} else {
+				outputsize = layer_config[j][conv_x] * layer_config[j][conv_y] * layer_config[j][conv_z];
+			}
+
+			DTYPE* temp_output = new DTYPE[outputsize];
+			if (layer_config[j][memwr_dst] == 0) {
+				status = clEnqueueReadBuffer (que_memWr[i], data_buf[i], CL_TRUE, 0, sizeof(DTYPE) * outputsize, (void*) temp_output, 0, NULL, NULL);
+				checkError (status, "Failed to read the output of the mem write.");	
+			} else if (layer_config[j][memwr_dst] == 1) {
+				status = clEnqueueReadBuffer (que_memWr[i], output_buf[i], CL_TRUE, 0, sizeof(DTYPE) * outputsize, (void*) temp_output, 0, NULL, NULL);
+				checkError (status, "Failed to read the output of the mem write.");
+			} else if (layer_config[j][memwr_dst] == 2) {
+				status = clEnqueueReadBuffer (que_memWr[i], fc_1_buf[i], CL_TRUE, 0, sizeof(DTYPE) * outputsize, (void*) temp_output, 0, NULL, NULL);
+				checkError (status, "Failed to read the output of the mem write.");
+			} else if (layer_config[j][memwr_dst] == 3) {
+				status = clEnqueueReadBuffer (que_memWr[i], fc_2_buf[i], CL_TRUE, 0, sizeof(DTYPE) * outputsize, (void*) temp_output, 0, NULL, NULL);
+				checkError (status, "Failed to read the output of the mem write.");
+			}
+	
+			char fileName[20] = {'\0'};
+			sprintf(fileName, "Layer%d.txt", j);
+	
+			FILE* fp;
+			fp = fopen(fileName, "w");
+			for (int i = 0; i < outputsize; i++) {
+				fprintf (fp, "%f \n", (float)(temp_output[i]));
+			}
+			fprintf (fp, "\n");
+#endif
+
 
 			// kernel lrn
 			if(layer_config[j][lrn_on]){
@@ -1073,6 +1118,7 @@ int main(int argc, char** argv)
 #ifdef USE_OPENCV
 		printf("Done! Inference time is %fs \n", time);
 #endif
+		printCurrentTime();
 		readDataBack();
 		verifyResult(pic_num);
 
@@ -1082,6 +1128,8 @@ int main(int argc, char** argv)
 		}//end of picture iteration
 #endif
 
+	}
+	
 	}// end of board iteration
 
 
@@ -1310,6 +1358,22 @@ void loadImageToBuffer(int num)
 			// Load image data into buffers
 			status = clEnqueueWriteBuffer(que_memRd[i], data_buf[i*input_config[batch_size]+j], CL_TRUE, 0, (layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]) * sizeof(DTYPE), data_init, 0, NULL, NULL);
 			checkError(status, "Failed to transfer input image");
+#endif
+
+#ifdef VERBOSE_OUTPUT
+			DTYPE* temp_output = new DTYPE[layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]];
+			status = clEnqueueReadBuffer(que_memRd[0], data_buf[j], CL_TRUE, 0, (layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]) * sizeof(DTYPE), (void *) temp_output, 0, NULL, NULL);
+			checkError (status, "Failed to read back the data");
+
+			char fileName[20] = {'\0'};
+			sprintf (fileName, "Input.txt");
+
+			FILE* fp;
+			fp = fopen(fileName, "w");
+
+			for (int i = 0; i < layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]; i++) {
+				fprintf (fp, "%f\n", (float) temp_output[i]);
+			}
 #endif
 		}
 	}
@@ -1982,5 +2046,21 @@ void cleanup()
 	alignedFree(output);
 	alignedFree(output_reorder);
 	alignedFree(output_one_item);
+
+}
+
+void printCurrentTime() {
+
+	char fmt[64];
+	char buf[64];
+	
+	struct timeval tv;
+	struct tm* tm;
+
+	gettimeofday(&tv, NULL);
+	tm = localtime (&tv.tv_sec);
+	strftime (fmt, sizeof (fmt), "%H:%M:%S:%%6u", tm);
+	snprintf (buf, sizeof (buf), fmt, tv.tv_usec);
+	printf ("[INFO] Reading at %s\n", buf);
 
 }
