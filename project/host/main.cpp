@@ -81,7 +81,7 @@ float accuracy1=0;
 float accuracy5=0;
 
 
-// AlexNet
+#ifdef ALEXNET_TEST
 // Original problem size
 // File size is in num of DTYPE numbers
 #define IMAGE_FILE_SIZE   (227*227*3)
@@ -93,9 +93,10 @@ const char *weight_file_path = "./data/data_alex/weights.dat";
 const char *input_file_path = "./data/data_alex/image.dat";
 const char *ref_file_path = "./data/data_alex/fc8.dat";
 const char *dump_file_path = "./result_dump.txt";
+#endif
 
 
-/*
+#ifdef VGG16_TEST
 // VGG16
 // Original problem size
 // File size is in num of DTYPE numbers
@@ -104,11 +105,11 @@ const char *dump_file_path = "./result_dump.txt";
 #define LAYER_NUM         16
 #define CONV_NUM          13
 
-const char *weight_file_path = "./data/data_vgg/weights.dat";
-const char *input_file_path = "./data/data_vgg/image.dat";
-const char *ref_file_path = "./data/data_vgg/fc8.dat";
+const char *weight_file_path = "./data/data_vgg16/weights.dat";
+const char *input_file_path = "./data/data_vgg16/image.dat";
+const char *ref_file_path = "./data/data_vgg16/fc8.dat";
 const char *dump_file_path = "./result_dump.txt";
-*/
+#endif
 
 // Configuration file instructions
 enum config_item{
@@ -519,7 +520,7 @@ int main(int argc, char** argv)
 	// Kernel excutions main loops
 	for(unsigned i = 0; i < 1; ++i) {
 	
-	for (int iter = 0; iter < 10; iter++) {
+	// for (int iter = 0; iter < 10; iter++) {
 
 #ifdef USE_OPENCV
 		// Run PipeCNN for multiple input pictures
@@ -1126,7 +1127,7 @@ int main(int argc, char** argv)
 		}//end of picture iteration
 #endif
 
-	}
+	//} // end of iterations
 	
 	}// end of board iteration
 

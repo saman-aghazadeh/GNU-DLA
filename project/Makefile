@@ -93,11 +93,13 @@ ifeq ($(FLOW),sw_emu)
 CXXFLAGS += -DSW_EMU
 endif
 
+MODEL = VGG16_TEST
+
 ifeq ($(VENDOR),xilinx)
 COMP_CONFIG = -I$(XILINX_SDX)/runtime/include/1_2 -I$(HOST_INCS)  -DFPGA_DEVICE -DXILINX
 LINK_CONFIG = -L$(XILINX_SDX)/runtime/lib/x86_64 -lxilinxopencl
 else ifeq ($(VENDOR),altera)
-COMP_CONFIG = $(shell aocl compile-config) -I$(HOST_INCS)  -DFPGA_DEVICE
+COMP_CONFIG = $(shell aocl compile-config) -I$(HOST_INCS)  -DFPGA_DEVICE -D$(MODEL)
 LINK_CONFIG = $(shell aocl link-config) -lrt
 else ifeq ($(VENDOR),amd)
 DEV_EXE =
