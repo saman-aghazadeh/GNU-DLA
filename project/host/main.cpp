@@ -520,7 +520,7 @@ int main(int argc, char** argv)
 	// Kernel excutions main loops
 	for(unsigned i = 0; i < 1; ++i) {
 	
-	// for (int iter = 0; iter < 10; iter++) {
+	for (int iter = 0; iter < 10; iter++) {
 
 #ifdef USE_OPENCV
 		// Run PipeCNN for multiple input pictures
@@ -1127,7 +1127,7 @@ int main(int argc, char** argv)
 		}//end of picture iteration
 #endif
 
-	//} // end of iterations
+	} // end of iterations
 	
 	}// end of board iteration
 

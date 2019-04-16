@@ -92,6 +92,8 @@ float accuracy1=0;
 float accuracy5=0;
 
 
+#ifdef ALEXNET_TEST
+
 // AlexNet
 // Original problem size
 // File size is in num of DTYPE numbers
@@ -105,8 +107,11 @@ const char *input_file_path = "./data/data_alex/image.dat";
 const char *ref_file_path = "./data/data_alex/fc8.dat";
 const char *dump_file_path = "./result_dump.txt";
 
+#endif
 
-/*
+#ifdef VGG16_TEST
+
+
 // VGG16
 // Original problem size
 // File size is in num of DTYPE numbers
@@ -119,7 +124,8 @@ const char *weight_file_path = "./data/data_vgg/weights.dat";
 const char *input_file_path = "./data/data_vgg/image.dat";
 const char *ref_file_path = "./data/data_vgg/fc8.dat";
 const char *dump_file_path = "./result_dump.txt";
-*/
+
+#endif
 
 // Configuration file instructions
 enum config_item{
