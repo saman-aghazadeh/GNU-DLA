@@ -169,8 +169,8 @@ void memRead(
 	// virtual loop counters
 	ushort gp_num_x, gp_num_y, out_idx_z;
 	ushort gp_num_x_winbuf, gp_num_y_winbuf, out_idx_z_winbuf;
-	uchar  output_idx_dim1, output_idx_dim2;
-	ushort output_idx_dim3;
+	// uchar  output_idx_dim1, output_idx_dim2;
+	// ushort output_idx_dim3;
 	uchar  win_itm_x, win_itm_y;
 	ushort win_itm_z;
 	
@@ -188,29 +188,71 @@ void memRead(
 	// Weight buffer
 	__local channel_vec  weight_buffer[WEIGHT_BUF_SIZE];
 
+	/*
 	// Initialize the winbuf with the data in the first iteration of the group looping (as gp_num_x_winbuf=0, gp_num_y_winbuf=0)
 	for(unsigned short win_itm_z=0; win_itm_z<weight_dim3/VEC_SIZE; win_itm_z++){
 		for(unsigned char  win_itm_y=0; win_itm_y<win_size_y; win_itm_y++){
 			for(unsigned char  win_itm_x=0; win_itm_x<win_size_x; win_itm_x++){
 	
-			feature_idx_dim1 = win_itm_x;
-			feature_idx_dim2 = win_itm_y;
-			feature_idx_dim3 = win_itm_z;
+				feature_idx_dim1 = win_itm_x;
+				feature_idx_dim2 = win_itm_y;
+				feature_idx_dim3 = win_itm_z;
 	
-			if((feature_idx_dim1>=padding && feature_idx_dim1<data_dim1+padding) && (feature_idx_dim2>=padding && feature_idx_dim2<data_dim2+padding)){
-			
-				data_vec = bottom[data_offset*data_dim1xdim2 + feature_idx_dim3*data_dim1xdim2 + (feature_idx_dim2-padding)*data_dim1 + (feature_idx_dim1-padding)];
-			}
-			else{
-				#pragma unroll
-				for(unsigned char vv=0; vv<VEC_SIZE; vv++){
-					data_vec.data[vv] = CZERO;
+				if((feature_idx_dim1>=padding && feature_idx_dim1<data_dim1+padding) && (feature_idx_dim2>=padding && feature_idx_dim2<data_dim2+padding)){			
+					data_vec = bottom[data_offset*data_dim1xdim2 + feature_idx_dim3*data_dim1xdim2 + (feature_idx_dim2-padding)*data_dim1 + (feature_idx_dim1-padding)];
 				}
-			}
+				else{
+					#pragma unroll
+					for(unsigned char vv=0; vv<VEC_SIZE; vv++){
+						data_vec.data[vv] = CZERO;
+					}
+				}
 			
-			win_buffer[0][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec;
-
+				win_buffer[0][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec;
 			}
+		}
+	}
+	*/
+
+	win_itm_z = 0;
+	win_itm_y = 0;
+	win_itm_x = 0;
+
+	int win_size_xyz_div_vecsize = win_size_x * win_size_y * weight_dim3 / VEC_SIZE;
+	for (int i = 0; i < win_size_xyz; i++) {
+		
+		feature_idx_dim1 = win_itm_x;
+		feature_idx_dim2 = win_itm_y;
+		feature_idx_dim3 = win_itm_z;
+
+		if((feature_idx_dim1>=padding && feature_idx_dim1<data_dim1+padding) && (feature_idx_dim2>=padding && feature_idx_dim2<data_dim2+padding)){			
+			data_vec = bottom[data_offset*data_dim1xdim2 + feature_idx_dim3*data_dim1xdim2 + (feature_idx_dim2-padding)*data_dim1 + (feature_idx_dim1-padding)];
+		} else{
+			#pragma unroll
+			for(unsigned char vv=0; vv<VEC_SIZE; vv++){
+				data_vec.data[vv] = CZERO;
+			}
+		}
+			
+		win_buffer[0][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec;
+
+		if ((win_itm_z == weight_dim3/VEC_SIZE-1) && (win_itm_y == win_size_y-1) && (win_itm_x == win_size_x-1)) {
+			win_itm_z = 0;
+		}
+		else if ((win_itm_y == win_size_y-1) && (win_itm_x == win_size_x-1)) {
+			win_itm_z++;
+		}
+
+		if ((win_itm_y == win_size_y-1) && (win_itm_x == win_size_x-1)) {
+			win_itm_y = 0;
+		} else if (win_itm_x == win_size_x-1) {
+			win_itm_y++;
+		}
+		
+		if (win_itm_x == win_size_x-1) {
+			win_itm_x = 0;
+		} else {
+			win_itm_x++;
 		}
 	}
 
@@ -226,7 +268,8 @@ void memRead(
 	gp_num_y = 0;
 	out_idx_z = 0;
 	
-	Group:for(unsigned int out_idx_xyz=0; out_idx_xyz<(weight_dim4_div_lane*group_num_y*group_num_x); out_idx_xyz++){
+	// Group:for(unsigned int out_idx_xyz=0; out_idx_xyz<(weight_dim4_div_lane*group_num_y*group_num_x); out_idx_xyz++){
+	for(unsigned int out_idx_xyz=0; out_idx_xyz<(weight_dim4_div_lane*group_num_y*group_num_x); out_idx_xyz++){
 
 		// special case when split==1, the output feature maps depend on only half the input feature maps
 		if(split==0)
@@ -236,197 +279,172 @@ void memRead(
 		else
 			data_offset = weight_dim3/VEC_SIZE;	// the upper half of the output feature maps depend on the upper half of the input
 	
-				flag = out_idx_xyz & 0x01; //ping-pong flag
-				
-				// reset output loop counters
-				output_idx_dim1 = 0;
-				output_idx_dim2 = 0;
-				output_idx_dim3 = 0;
-				// reset in-group item counters 
-				gp_item_idx_x = 0;
-				
-				// reset input winbuffer loop counters
-				win_itm_x = 0;
-				win_itm_y = 0;
-				win_itm_z = 0;
-				
-				
-				if(gp_num_x==group_num_x-1)
-					item_loop_bound = win_size_x>=group_rem_size_x?(win_size_xyz/VEC_SIZE):(group_rem_size_xyz/VEC_SIZE);
-				else{
-					item_loop_bound = (weight_dim1x2x3*CONV_GP_SIZE_Y*CONV_GP_SIZE_X/VEC_SIZE);
-				}
-
-				#pragma ivdep array(win_buffer)
-				#pragma ivdep array(weight_buffer)
-				//Item:for(unsigned int  win_itm_xyz=0; win_itm_xyz<item_loop_bound; win_itm_xyz++){
-				for(unsigned int win_itm_xyz = 0; win_itm_xyz < item_loop_bound; win_itm_xyz++) {
-
-							// Winbuffer loading operations
-							if(win_itm_z<weight_dim3/VEC_SIZE){
-
-								feature_idx_dim1 = win_itm_x+gp_num_x_winbuf*CONV_GP_SIZE_X*stride;
-								feature_idx_dim2 = win_itm_y+gp_num_y_winbuf*CONV_GP_SIZE_Y*stride;
-								feature_idx_dim3 = win_itm_z;
-
-								if((feature_idx_dim1>=padding && feature_idx_dim1<data_dim1+padding) && (feature_idx_dim2>=padding && feature_idx_dim2<data_dim2+padding)){
-								
-									data_vec = bottom[data_offset*data_dim1xdim2 + feature_idx_dim3*data_dim1xdim2 + (feature_idx_dim2-padding)*data_dim1 + (feature_idx_dim1-padding)];
-																	}
-								else{ // for padding (feature_idx<padding or data_dim+padding<=feature_idx<data_dim+2*padding)
-									#pragma unroll
-									for(unsigned char vv=0; vv<VEC_SIZE; vv++){
-										data_vec.data[vv] = CZERO;
-									}
-								}
-								
-								win_buffer[(~flag)&0x01][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec;
-
-								// used as loop counters
-								if((win_itm_z==weight_dim3/VEC_SIZE-1) && (win_itm_y==win_size_y-1) && (win_itm_x==win_size_x-1))
-									win_itm_z = 0;
-								else if((win_itm_y==win_size_y-1) && (win_itm_x==win_size_x-1))
-									win_itm_z++;
-
-								if((win_itm_y==win_size_y-1) && (win_itm_x==win_size_x-1))
-									win_itm_y = 0;
-								else if(win_itm_x==win_size_x-1)
-									win_itm_y++;
-								
-								if(win_itm_x==win_size_x-1)
-									win_itm_x = 0;
-								else
-									win_itm_x++;
-									
-							}
-							
-							// Load weight into weight buffer
-							if(gp_item_idx_x==0){
-								
-								weight_ch_vec = weights[out_idx_z*weight_dim1x2x3/VEC_SIZE + output_idx_dim3*weight_dim1x2 + output_idx_dim2*weight_dim1 + output_idx_dim1];
-								weight_buffer[output_idx_dim3*weight_dim2*weight_dim1 + output_idx_dim2*weight_dim1 + output_idx_dim1] = weight_ch_vec;
-
-							}
-							
-							// In this version, grouping is only performed in row (x) direction
-							if(gp_num_x*CONV_GP_SIZE_X+gp_item_idx_x<conv_x){
-                    
-								if(output_idx_dim1==0 && output_idx_dim2==0 && output_idx_dim3==0){
-									bias_ch_in = bias[out_idx_z];
-#ifndef EMULATE
-									write_channel_intel(bias_ch, bias_ch_in);
-									//printf ("[bias] ");
-									//for (unsigned char ll = 0; ll < LANE_NUM; ll++) {
-									//	printf ("%d ", bias_ch_in.lane[ll]);
-									//}
-									//printf ("\n");
-#else
-									write_channel_intel(bias_ch_write, bias_ch_in);
-#endif
-									//#ifdef DEBUG_MEMRD
-									//printf("work-item x=%d, y=%d, z=%d, channel =0, write bias=%f\n", output_idx_dim1, output_idx_dim2, output_idx_dim3, bias_ch_in.lane[0]);
-									//#endif
-								}
-
-								// data
-								data_vec = win_buffer[flag][output_idx_dim3*win_size_y*win_size_x + output_idx_dim2*win_size_x + (output_idx_dim1+gp_item_idx_x*stride)];
-								#pragma unroll
-								for(unsigned char ll=0; ll<LANE_NUM; ll++){
-									data_ch_vec.lane[ll] = data_vec;
-								}
-#ifndef EMULATE
-								write_channel_intel(data_ch, data_ch_vec);
-								//printf ("[data]\n");
-								//for (unsigned char ll1 = 0; ll1 < LANE_NUM; ll1++) {
-								//	for (unsigned char ll2 = 0; ll2 < VEC_SIZE; ll2++) {
-								//		printf ("%d ", data_ch_vec.lane[ll1].data[ll2]);
-								//	}
-								//	printf ("\n");
-								//}
-#else
-								write_channel_intel(data_ch_write, data_ch_vec);
-#endif
-								
-								
-								// weight and bias fetcher
-								weight_ch_vec = weight_buffer[output_idx_dim3*weight_dim2*weight_dim1 + output_idx_dim2*weight_dim1 + output_idx_dim1];
-#ifndef EMULATE
-								write_channel_intel(weight_ch, weight_ch_vec);
-								//printf ("[weight]\n");
-								//for (unsigned char ll1 = 0; ll1 < LANE_NUM; ll1++) {
-								//	for (unsigned char ll2 = 0; ll2 < VEC_SIZE; ll2++) {
-								//		printf ("%d ", weight_ch_vec.lane[ll1].data[ll2]);
-								//	}
-								//	printf ("\n");
-								//}
-#else
-								write_channel_intel(weight_ch_write, weight_ch_vec);
-#endif
-								
-								#ifdef DEBUG_MEMRD
-								//if(gp_num_x==group_num_x-1 && gp_num_y==0 && out_idx_z==0){
-									printf("work-item x=%d, y=%d, z=%d, offset=%d, write data in channel 0=%f\n", output_idx_dim1, output_idx_dim2, output_idx_dim3, data_offset, (float)data_ch_vec.lane[0].data[0]);
-									//printf("work-item x=%d, y=%d, z=%d, write weight in channel 0=%f\n", output_idx_dim1, output_idx_dim2, output_idx_dim3, (float)weight_ch_vec.lane[0].data[0]);
-								//}
-								#endif
+		flag = out_idx_xyz & 0x01; //ping-pong flag
 	
-								// used as output loop counters
-								if((output_idx_dim3==weight_dim3/VEC_SIZE-1) && (output_idx_dim2==weight_dim2-1) && (output_idx_dim1==weight_dim1-1)){
-									output_idx_dim3 = 0;
-									gp_item_idx_x++;
-								}
-								else if((output_idx_dim2==weight_dim2-1)&& (output_idx_dim1==weight_dim1-1))
-									output_idx_dim3++;
-								
-								if((output_idx_dim2==weight_dim2-1) && (output_idx_dim1==weight_dim1-1))
-									output_idx_dim2 = 0;
-								else if(output_idx_dim1==weight_dim1-1)
-									output_idx_dim2++;
-	                
-								if(output_idx_dim1==weight_dim1-1)
-									output_idx_dim1 = 0;
-								else
-									output_idx_dim1++;
+		uchar  output_idx_dim1, output_idx_dim2;
+		ushort output_idx_dim3;
 
-								}
-
-				}
-
-		// used as virtual group loop counters for winbuf loading operations
-		if((out_idx_z_winbuf==weight_dim4_div_lane-1) && (gp_num_y_winbuf==group_num_y-1) && (gp_num_x_winbuf==group_num_x-1))
-			out_idx_z_winbuf = 0;
-		else if((gp_num_y_winbuf==group_num_y-1) && (gp_num_x_winbuf==group_num_x-1))
-			out_idx_z_winbuf++;	
-
-		if((gp_num_y_winbuf==group_num_y-1) && (gp_num_x_winbuf==group_num_x-1))
-			gp_num_y_winbuf = 0;
-		else if(gp_num_x_winbuf==group_num_x-1)
-			gp_num_y_winbuf++;	
-
-		if(gp_num_x_winbuf==group_num_x-1)
-			gp_num_x_winbuf = 0;
-		else
-			gp_num_x_winbuf++;
-		
-		// used as virtual group loop counters
-		if((out_idx_z==weight_dim4_div_lane-1) && (gp_num_y==group_num_y-1) && (gp_num_x==group_num_x-1))
-			out_idx_z = 0;
-		else if((gp_num_y==group_num_y-1) && (gp_num_x==group_num_x-1))
-			out_idx_z++;	
-        
-		if((gp_num_y==group_num_y-1) && (gp_num_x==group_num_x-1))
-			gp_num_y = 0;
-		else if(gp_num_x==group_num_x-1)
-			gp_num_y++;
-        
+			
+		// reset output loop counters
+		output_idx_dim1 = 0;
+		output_idx_dim2 = 0;
+		output_idx_dim3 = 0;
+		// reset in-group item counters 
+		gp_item_idx_x = 0;
+				
+		// reset input winbuffer loop counters
+		win_itm_x = 0;
+		win_itm_y = 0;
+		win_itm_z = 0;
+				
+				
 		if(gp_num_x==group_num_x-1)
-			gp_num_x = 0;
+			item_loop_bound = win_size_x>=group_rem_size_x?(win_size_xyz/VEC_SIZE):(group_rem_size_xyz/VEC_SIZE);
 		else
-			gp_num_x++;
+			item_loop_bound = (weight_dim1x2x3*CONV_GP_SIZE_Y*CONV_GP_SIZE_X/VEC_SIZE);
 
-	}
+		#pragma ivdep array(win_buffer)
+		#pragma ivdep array(weight_buffer)
+		//Item:for(unsigned int  win_itm_xyz=0; win_itm_xyz<item_loop_bound; win_itm_xyz++){
+		for(unsigned int win_itm_xyz = 0; win_itm_xyz < item_loop_bound; win_itm_xyz++) {
+
+			// Winbuffer loading operations
+			if(win_itm_z<weight_dim3/VEC_SIZE){
+				feature_idx_dim1 = win_itm_x+gp_num_x_winbuf*CONV_GP_SIZE_X*stride;
+				feature_idx_dim2 = win_itm_y+gp_num_y_winbuf*CONV_GP_SIZE_Y*stride;
+				feature_idx_dim3 = win_itm_z;
+
+				if((feature_idx_dim1>=padding && feature_idx_dim1<data_dim1+padding) && (feature_idx_dim2>=padding && feature_idx_dim2<data_dim2+padding)){				
+					data_vec = bottom[data_offset*data_dim1xdim2 + feature_idx_dim3*data_dim1xdim2 + (feature_idx_dim2-padding)*data_dim1 + (feature_idx_dim1-padding)];
+				}
+				else{ // for padding (feature_idx<padding or data_dim+padding<=feature_idx<data_dim+2*padding)
+					#pragma unroll
+					for(unsigned char vv=0; vv<VEC_SIZE; vv++){
+						data_vec.data[vv] = CZERO;
+					}
+				}
+								
+				win_buffer[(~flag)&0x01][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec;
+
+				// used as loop counters
+				if((win_itm_z==weight_dim3/VEC_SIZE-1) && (win_itm_y==win_size_y-1) && (win_itm_x==win_size_x-1))
+					win_itm_z = 0;
+				else if((win_itm_y==win_size_y-1) && (win_itm_x==win_size_x-1))
+					win_itm_z++;
+
+				if((win_itm_y==win_size_y-1) && (win_itm_x==win_size_x-1))
+					win_itm_y = 0;
+				else if(win_itm_x==win_size_x-1)
+					win_itm_y++;
+								
+				if(win_itm_x==win_size_x-1)
+					win_itm_x = 0;
+				else
+					win_itm_x++;
+									
+			}
+							
+			// Load weight into weight buffer
+			if(gp_item_idx_x==0){					
+				weight_ch_vec = weights[out_idx_z*weight_dim1x2x3/VEC_SIZE + output_idx_dim3*weight_dim1x2 + output_idx_dim2*weight_dim1 + output_idx_dim1];
+				weight_buffer[output_idx_dim3*weight_dim2*weight_dim1 + output_idx_dim2*weight_dim1 + output_idx_dim1] = weight_ch_vec;
+			}
+							
+			// In this version, grouping is only performed in row (x) direction
+			if(gp_num_x*CONV_GP_SIZE_X+gp_item_idx_x<conv_x){
+				if(output_idx_dim1==0 && output_idx_dim2==0 && output_idx_dim3==0){
+					bias_ch_in = bias[out_idx_z];
+
+					write_channel_intel(bias_ch, bias_ch_in);
+				}
+
+				// data
+				data_vec = win_buffer[flag][output_idx_dim3*win_size_y*win_size_x + output_idx_dim2*win_size_x + (output_idx_dim1+gp_item_idx_x*stride)];
+				#pragma unroll
+				for(unsigned char ll=0; ll<LANE_NUM; ll++){
+					data_ch_vec.lane[ll] = data_vec;
+				}
+				write_channel_intel(data_ch, data_ch_vec);
+								
+				// weight and bias fetcher
+				weight_ch_vec = weight_buffer[output_idx_dim3*weight_dim2*weight_dim1 + output_idx_dim2*weight_dim1 + output_idx_dim1];
+				write_channel_intel(weight_ch, weight_ch_vec);
 	
-	//printf("Kernel 0 lanched !!!\n");
+				/*
+				// used as output loop counters
+				if((output_idx_dim3==weight_dim3/VEC_SIZE-1) && (output_idx_dim2==weight_dim2-1) && (output_idx_dim1==weight_dim1-1)){
+					output_idx_dim3 = 0;
+					gp_item_idx_x++;
+				}
+				else if((output_idx_dim2==weight_dim2-1)&& (output_idx_dim1==weight_dim1-1))
+					output_idx_dim3++;
+								
+				if((output_idx_dim2==weight_dim2-1) && (output_idx_dim1==weight_dim1-1))
+					output_idx_dim2 = 0;
+				else if(output_idx_dim1==weight_dim1-1)
+					output_idx_dim2++;
+	                
+				if(output_idx_dim1==weight_dim1-1)
+					output_idx_dim1 = 0;
+				else
+					output_idx_dim1++;
+				*/	
+
+			}
+
+			// used as output loop counters
+			if((output_idx_dim3==weight_dim3/VEC_SIZE-1) && (output_idx_dim2==weight_dim2-1) && (output_idx_dim1==weight_dim1-1)){
+				output_idx_dim3 = 0;
+				gp_item_idx_x++;
+			}
+			else if((output_idx_dim2==weight_dim2-1)&& (output_idx_dim1==weight_dim1-1))
+				output_idx_dim3++;
+								
+			if((output_idx_dim2==weight_dim2-1) && (output_idx_dim1==weight_dim1-1))
+				output_idx_dim2 = 0;
+			else if(output_idx_dim1==weight_dim1-1)
+				output_idx_dim2++;
+	                
+			if(output_idx_dim1==weight_dim1-1)
+				output_idx_dim1 = 0;
+			else
+				output_idx_dim1++;
+
+			// used as virtual group loop counters for winbuf loading operations
+			if((out_idx_z_winbuf==weight_dim4_div_lane-1) && (gp_num_y_winbuf==group_num_y-1) && (gp_num_x_winbuf==group_num_x-1))
+				out_idx_z_winbuf = 0;
+			else if((gp_num_y_winbuf==group_num_y-1) && (gp_num_x_winbuf==group_num_x-1))
+				out_idx_z_winbuf++;	
+
+			if((gp_num_y_winbuf==group_num_y-1) && (gp_num_x_winbuf==group_num_x-1))
+				gp_num_y_winbuf = 0;
+			else if(gp_num_x_winbuf==group_num_x-1)
+				gp_num_y_winbuf++;	
+
+			if(gp_num_x_winbuf==group_num_x-1)
+				gp_num_x_winbuf = 0;
+			else
+				gp_num_x_winbuf++;
+		
+			// used as virtual group loop counters
+			if((out_idx_z==weight_dim4_div_lane-1) && (gp_num_y==group_num_y-1) && (gp_num_x==group_num_x-1))
+				out_idx_z = 0;
+			else if((gp_num_y==group_num_y-1) && (gp_num_x==group_num_x-1))
+				out_idx_z++;	
+        
+			if((gp_num_y==group_num_y-1) && (gp_num_x==group_num_x-1))
+				gp_num_y = 0;
+			else if(gp_num_x==group_num_x-1)
+				gp_num_y++;
+        
+			if(gp_num_x==group_num_x-1)
+				gp_num_x = 0;
+			else
+				gp_num_x++;
+
+		}
+	}	
+		//printf("Kernel 0 lanched !!!\n");
 }
 
 
