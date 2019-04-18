@@ -120,9 +120,9 @@ const char *dump_file_path = "./result_dump.txt";
 #define LAYER_NUM         16
 #define CONV_NUM          13
 
-const char *weight_file_path = "./data/data_vgg/weights.dat";
-const char *input_file_path = "./data/data_vgg/image.dat";
-const char *ref_file_path = "./data/data_vgg/fc8.dat";
+const char *weight_file_path = "./data/data_vgg16/weights.dat";
+const char *input_file_path = "./data/data_vgg16/image.dat";
+const char *ref_file_path = "./data/data_vgg16/fc8.dat";
 const char *dump_file_path = "./result_dump.txt";
 
 #endif
