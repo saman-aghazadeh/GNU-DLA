@@ -40,12 +40,15 @@
 // #define VEC_SIZE            4              // larger than 4, i.e., 4, 8, 16, ...
 //#define LANE_NUM            16             // larger than 1, for alexnet: 2, 3, 4, 8, 12, 15, 16, 22, 28, 32, 34, 48, 50, 51, 52, 64, ...
 
-#define VEC_SIZE		8
-#define LANE_NUM		32
+#define VEC_SIZE		16
+#define LANE_NUM		16
 
 #define CHN_DEPTH           0
 //MemRD Kernel
-#define CONV_GP_SIZE_X      7
+// #define CONV_GP_SIZE_X      7
+// #define CONV_GP_SIZE_Y      1              // In this version, CONV_GP_SIZE_Y must be 1
+
+#define CONV_GP_SIZE_X      14
 #define CONV_GP_SIZE_Y      1              // In this version, CONV_GP_SIZE_Y must be 1
 
 #ifdef ALEXNET_TEST
@@ -57,8 +60,11 @@
 
 #ifdef VGG16_TEST
 
-#define WIN_BUF_SIZE        25088/VEC_SIZE // for VGG-16  batch=1
-#define WEIGHT_BUF_SIZE     25088/VEC_SIZE // for VGG-16  batch=1
+// #define WIN_BUF_SIZE        25088/VEC_SIZE // for VGG-16  batch=1
+// #define WEIGHT_BUF_SIZE     25088/VEC_SIZE // for VGG-16  batch=1
+
+#define WIN_BUF_SIZE        24576/VEC_SIZE // for VGG-16  batch=1
+#define WEIGHT_BUF_SIZE     24576/VEC_SIZE // for VGG-16  batch=1
 
 #endif
 
