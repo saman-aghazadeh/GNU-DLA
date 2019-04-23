@@ -63,8 +63,8 @@
 // #define WIN_BUF_SIZE        25088/VEC_SIZE // for VGG-16  batch=1
 // #define WEIGHT_BUF_SIZE     25088/VEC_SIZE // for VGG-16  batch=1
 
-#define WIN_BUF_SIZE        24576/VEC_SIZE // for VGG-16  batch=1
-#define WEIGHT_BUF_SIZE     24576/VEC_SIZE // for VGG-16  batch=1
+#define WIN_BUF_SIZE        25088/VEC_SIZE // for VGG-16  batch=1
+#define WEIGHT_BUF_SIZE     25088/VEC_SIZE // for VGG-16  batch=1
 
 #endif
 

@@ -520,8 +520,8 @@ int main(int argc, char** argv)
 	// Kernel excutions main loops
 	for(unsigned i = 0; i < 1; ++i) {
 	
-	for (int iter = 0; iter < 10; iter++) {
-
+	for (int iter = 0; iter < 2; iter++) {
+		
 #ifdef USE_OPENCV
 		// Run PipeCNN for multiple input pictures
 		for (pic_num = 1; pic_num <=PICTURE_NUM; ++pic_num){
@@ -530,6 +530,8 @@ int main(int argc, char** argv)
 
 		// Recorde the start time
 		t.start();
+		
+		printCurrentTime();
 
 		// Each iteration excutes one layer convolution
 		// MemRd -> Conv(Relu) -> (MaxPool) -> MemWr -> (Lrn)
@@ -945,6 +947,8 @@ int main(int argc, char** argv)
 			if(k == 0&&pic_num==1)
 				printf("\nLaunching single work-item kernel winbuffer\n");
 
+			printf ("[INFO] Start for Layer %d ", j);
+			printCurrentTime();
 #ifdef CASCADE
 			// Issue the deserializer if this is not the first layer
 			if (j != 0) {
@@ -1082,6 +1086,9 @@ int main(int argc, char** argv)
 #endif
 #endif
 
+			printf ("[INFO] End for Layer %d ", j);
+			printCurrentTime();
+
 			// Must release event object to avoid performance degeneration !!!
 			clReleaseEvent(memRd_event[i]);
 			checkError(status, "Failed to release memRD event object");
@@ -1114,6 +1121,8 @@ int main(int argc, char** argv)
 
 		t.stop();
 		time = t.get_time_s();
+
+		printCurrentTime();
 #ifdef USE_OPENCV
 		printf("Done! Inference time is %fs \n", time);
 #endif
@@ -1475,7 +1484,7 @@ int prepare()
 		// check win_buffer size
 		if(conv_win_size_dim1*conv_win_size_dim2*layer_config[ll][weight_n]/VEC_SIZE > WIN_BUF_SIZE){
 
-			printf("Error: required win_buffer size is %d, configured size is %d \n", conv_win_size_dim1*conv_win_size_dim2*layer_config[ll][weight_n]/VEC_SIZE, WIN_BUF_SIZE);
+			printf("Error: required win_buffer size is %d, configured size is %d, because win_size_dim1=%d and win_size_dim2=%d and weight_n=%d\n", conv_win_size_dim1*conv_win_size_dim2*layer_config[ll][weight_n]/VEC_SIZE, WIN_BUF_SIZE, conv_win_size_dim1, conv_win_size_dim2, layer_config[ll][weight_n]);
 			return 1;
 		}
 		// check weight_buffer size
