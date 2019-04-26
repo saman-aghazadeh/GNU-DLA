@@ -169,9 +169,9 @@ void memReadData(
 	uchar  win_itm_x, win_itm_y;
 	ushort win_itm_z;
 	uchar flag; // ping-pong flag
-
+	int win_size_xyz_div_vecsize = win_size_x * win_size_y * weight_dim3 / VEC_SIZE;
 	// Ping-pong buffer
-	 __local lane_data    win_buffer[2][WIN_BUF_SIZE]; // working sequence 0->1->0->1 ...
+	__local lane_data win_buffer_temp[WIN_BUF_SIZE]; // working sequence 0->1->0->1 ...
 	// Weight buffer
 	//__local channel_vec  weight_buffer[WEIGHT_BUF_SIZE];
 
@@ -201,11 +201,10 @@ void memReadData(
 					}
 				}
 			
-				win_buffer[0][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec;
+				win_buffer_temp[win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec;
 			}
 		}
 	}
-
 	
 
 	if(group_num_x==1)
@@ -222,6 +221,7 @@ void memReadData(
 
 	// #pragma ivdep array(win_buffer)
 	for(unsigned int out_idx_xyz=0; out_idx_xyz<(weight_dim4_div_lane*group_num_y*group_num_x); out_idx_xyz++){
+		lane_data     win_buffer[2][WIN_BUF_SIZE]; // working sequence 0->1->0->1 ...
 		ushort        data_offset = 0; // assuming the 1st layer is not in split
 		
 		uchar  	      output_idx_dim1, output_idx_dim2;
@@ -230,6 +230,15 @@ void memReadData(
 		uchar  	      win_itm_x, win_itm_y;
 		ushort 	      win_itm_z;
 		uint   item_loop_bound;
+
+		for (int i = 0; i < win_size_xyz_div_vecsize; i+=4) {				
+			if (out_idx_xyz == 0) {
+				win_buffer[0][i] = win_buffer_temp[i];
+				win_buffer[0][i+1] = win_buffer_temp[i+1];
+				win_buffer[0][i+2] = win_buffer_temp[i+2];
+				win_buffer[0][i+3] = win_buffer_temp[i+3];
+			}
+		}
 
 		// special case when split==1, the output feature maps depend on only half the input feature maps
 		if(split==0)
@@ -387,16 +396,11 @@ void memReadBias(
 			uchar	conv_y,
 			__global channel_scal	*restrict bias)
 {	
-		
-
-	printf ("[FPGA] In the memRdBias\n");	
+			
 	channel_scal	bias_ch_in;
 	ushort conv_xy = conv_x * conv_y;
-	printf ("[FPGA] conv_xy is = %d\n", conv_xy);
-	printf ("[FPGA] weight_dim4_div_lane is = %d\n", weight_dim4_div_lane);
 
-	for (ushort i = 0; i < weight_dim4_div_lane; i++) {
-		printf ("[FPGA] on the 4th dimension index of %d\n", i);
+	for (uchar i = 0; i < weight_dim4_div_lane; i++) {
 		bias_ch_in = bias[i];
 		for (ushort j = 0; j < conv_xy; j++) {
 			write_channel_intel(bias_ch, bias_ch_in);
