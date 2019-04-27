@@ -389,14 +389,10 @@ void memReadBias(
 {	
 		
 
-	printf ("[FPGA] In the memRdBias\n");	
 	channel_scal	bias_ch_in;
 	ushort conv_xy = conv_x * conv_y;
-	printf ("[FPGA] conv_xy is = %d\n", conv_xy);
-	printf ("[FPGA] weight_dim4_div_lane is = %d\n", weight_dim4_div_lane);
 
 	for (ushort i = 0; i < weight_dim4_div_lane; i++) {
-		printf ("[FPGA] on the 4th dimension index of %d\n", i);
 		bias_ch_in = bias[i];
 		for (ushort j = 0; j < conv_xy; j++) {
 			write_channel_intel(bias_ch, bias_ch_in);

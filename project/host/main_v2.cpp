@@ -543,7 +543,7 @@ int main(int argc, char** argv)
 	// Kernel excutions main loops
 	for(unsigned i = 0; i < 1; ++i) {
 	
-	for (int iter = 0; iter < 1; iter++) {
+	for (int iter = 0; iter < 4; iter++) {
 		
 #ifdef USE_OPENCV
 		// Run PipeCNN for multiple input pictures
