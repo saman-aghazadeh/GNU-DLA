@@ -49,14 +49,14 @@
 // #define CONV_GP_SIZE_X      7
 // #define CONV_GP_SIZE_Y      1              // In this version, CONV_GP_SIZE_Y must be 1
 
-#define CONV_GP_SIZE_X      12
+#define CONV_GP_SIZE_X      7
 #define CONV_GP_SIZE_Y      1              // In this version, CONV_GP_SIZE_Y must be 1
 
 #ifdef ALEXNET_TEST
 
-	#define WIN_BUF_SIZE        18432/VEC_SIZE  // for AlexNet  batch=1
-	#define WEIGHT_BUF_SIZE     18432/VEC_SIZE  // for AlexNet  batch=1
-	#define WEIGHT_BUF_SIZE_V2     6272/VEC_SIZE  // for AlexNet  batch=1
+	#define WIN_BUF_SIZE        9216/VEC_SIZE  // for AlexNet  batch=1
+	#define WEIGHT_BUF_SIZE     9216/VEC_SIZE  // for AlexNet  batch=1
+	#define WEIGHT_BUF_SIZE_V2     3136/VEC_SIZE  // for AlexNet  batch=1
 
 #endif
 
