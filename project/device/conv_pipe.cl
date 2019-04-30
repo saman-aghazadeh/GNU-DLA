@@ -208,7 +208,7 @@ void memRead(
 					data_vec.data[vv] = CZERO;
 				}
 			}
-			
+	
 			win_buffer[0][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec;
 
 			}
@@ -235,6 +235,7 @@ void memRead(
                                 data_vec.data[vv] = CZERO;
                         }
                 }
+
 
                 win_buffer[0][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec;
 
@@ -324,7 +325,7 @@ void memRead(
 										data_vec.data[vv] = CZERO;
 									}
 								}
-								
+
 								win_buffer[(~flag)&0x01][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec;
 
 								// used as loop counters

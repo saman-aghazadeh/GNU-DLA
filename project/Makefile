@@ -1,6 +1,7 @@
 #set source and target for host
 HOST_EXE  = run.exe
 HOST_EXE_V2 = run_v2.exe
+HOST_EXE_V3 = run_v3.exe
 HOST_EXE_CASCADE_EMU  = run_cascade_emu.exe
 HOST_EXE_CHANNEL_TEST = run_channel_test.exe
 HOST_EXE_CHANNEL_TEST_TX = run_channel_test_tx.exe
@@ -9,6 +10,7 @@ HOST_EXE_MAC_TEST = run_mac_test.exe
 HOST_EXE_CHANNEL_MULTI_FPGA = run_channel_multi_fpga.exe
 HOST_SRCS = ./host/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_V2 = ./host/main_v2.cpp ../common/ocl_util.cpp ../common/timer.cpp
+HOST_SRCS_V3 = ./host/main_v3.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_CASCADE_EMU = ./host/cascade_emu_main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_CHANNEL_TEST = ./host/channel_test_main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_CHANNEL_TEST_TX = ./host/channel_test_main_tx.cpp ../common/ocl_util.cpp ../common/timer.cpp
@@ -18,6 +20,7 @@ HOST_SRCS_CHANNEL_MULTI_FPGA = host/multi-fpga/channel/multi_fpga.cpp ../common/
 
 HOST_OBJS = $(HOST_SRCS:%.cpp=%.o)
 HOST_OBJS_V2 = $(HOST_SRCS_V2:%.cpp=%.o)
+HOST_OBJS_V3 = $(HOST_SRCS_V3:%.cpp=%.o)
 HOST_OBJS_CASCADE_EMU = $(HOST_SRCS_CASCADE_EMU:%.cpp=%.o)
 HOST_OBJS_CHANNEL_TEST = $(HOST_SRCS_CHANNEL_TEST:%.cpp=%.o)
 HOST_OBJS_MAC_TEST = $(HOST_SRCS_MAC_TEST:%.cpp=%.o)
@@ -86,9 +89,9 @@ endif
 
 #select whether use OpenCV or not
 ifeq ($(USE_OPENCV),1)
-CXXFLAGS = -g -Wall -std=c++11 -DUSE_OPENCV
+CXXFLAGS = -g -Wall -std=c++11 -DUSE_OPENCV -DVERBOSE_OUTPUT
 else
-CXXFLAGS = -g -Wall -std=c++11
+CXXFLAGS = -g -Wall -std=c++11 -DVERBOSE_OUTPUT
 endif
 
 #select whether manually launch free-run kernels
@@ -96,7 +99,7 @@ ifeq ($(FLOW),sw_emu)
 CXXFLAGS += -DSW_EMU
 endif
 
-MODEL = ALEXNET_TEST
+MODEL = VGG16_TEST
 
 ifeq ($(VENDOR),xilinx)
 COMP_CONFIG = -I$(XILINX_SDX)/runtime/include/1_2 -I$(HOST_INCS)  -DFPGA_DEVICE -DXILINX
@@ -153,9 +156,9 @@ all: host fpga
 
 .PHONY: host
 ifeq ($(FLOW),sw_emu)
-host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_CASCADE_EMU) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_CHANNEL_MULTI_FPGA)
+host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_CASCADE_EMU) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_CHANNEL_MULTI_FPGA)
 else
-host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX)
+host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX)
 endif
 
 .PHONY: fpga
@@ -170,6 +173,9 @@ $(HOST_EXE): $(HOST_OBJS)
 
 $(HOST_EXE_V2): $(HOST_OBJS_V2)
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_V2) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
+
+$(HOST_EXE_V3): $(HOST_OBJS_V3)
+	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_V3) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
 
 $(HOST_EXE_CASCADE_EMU): $(HOST_OBJS_CASCADE_EMU)
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_CASCADE_EMU) -o $@ $(LINK_CONFIG) $(OCV_LIBS)

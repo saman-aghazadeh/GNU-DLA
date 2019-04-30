@@ -998,7 +998,7 @@ int main(int argc, char** argv)
 #ifdef VERBOSE_OUTPUT                                                                                             
 
 			int outputsize = 0;
-		        if (layer_config[j][lrn_on]) {
+		        if (layer_config[j][pool_on]) {
 				outputsize = layer_config[j][pool_x] * layer_config[j][pool_y] * layer_config[j][pool_z];
 			} else {
 				outputsize = layer_config[j][conv_x] * layer_config[j][conv_y] * layer_config[j][conv_z];

@@ -1441,7 +1441,7 @@ void loadImageToBuffer(int num)
 
 #ifdef VERBOSE_OUTPUT
 			DTYPE* temp_output = new DTYPE[layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]];
-			status = clEnqueueReadBuffer(que_memRd[0], data_buf[j], CL_TRUE, 0, (layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]) * sizeof(DTYPE), (void *) temp_output, 0, NULL, NULL);
+			status = clEnqueueReadBuffer(que_memRdData[0], data_buf[j], CL_TRUE, 0, (layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]) * sizeof(DTYPE), (void *) temp_output, 0, NULL, NULL);
 			checkError (status, "Failed to read back the data");
 
 			char fileName[20] = {'\0'};

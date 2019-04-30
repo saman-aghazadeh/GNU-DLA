@@ -169,9 +169,9 @@ void memReadData(
 	uchar  win_itm_x, win_itm_y;
 	ushort win_itm_z;
 	uchar flag; // ping-pong flag
-	int win_size_xyz_div_vecsize = win_size_x * win_size_y * weight_dim3 / VEC_SIZE;
+
 	// Ping-pong buffer
-	__local lane_data win_buffer_temp[WIN_BUF_SIZE]; // working sequence 0->1->0->1 ...
+	 __local lane_data    win_buffer[2][WIN_BUF_SIZE]; // working sequence 0->1->0->1 ...
 	// Weight buffer
 	//__local channel_vec  weight_buffer[WEIGHT_BUF_SIZE];
 
@@ -189,7 +189,8 @@ void memReadData(
 				feature_idx_dim1 = win_itm_x;
 				feature_idx_dim2 = win_itm_y;
 				feature_idx_dim3 = win_itm_z;
-	
+
+				/*	
 				if((feature_idx_dim1>=padding && feature_idx_dim1<data_dim1+padding) && (feature_idx_dim2>=padding && feature_idx_dim2<data_dim2+padding)){
 			
 					data_vec = bottom[feature_idx_dim3*data_dim1xdim2 + (feature_idx_dim2-padding)*data_dim1 + (feature_idx_dim1-padding)];
@@ -200,11 +201,16 @@ void memReadData(
 						data_vec.data[vv] = CZERO;
 					}
 				}
+				*/
+
+				data_vec = bottom[feature_idx_dim3*data_dim1xdim2 + feature_idx_dim2*data_dim1 + feature_idx_dim1];
 			
-				win_buffer_temp[win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec;
+				win_buffer[0][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec;
+				
 			}
 		}
 	}
+
 	
 
 	if(group_num_x==1)
@@ -221,7 +227,6 @@ void memReadData(
 
 	// #pragma ivdep array(win_buffer)
 	for(unsigned int out_idx_xyz=0; out_idx_xyz<(weight_dim4_div_lane*group_num_y*group_num_x); out_idx_xyz++){
-		lane_data     win_buffer[2][WIN_BUF_SIZE]; // working sequence 0->1->0->1 ...
 		ushort        data_offset = 0; // assuming the 1st layer is not in split
 		
 		uchar  	      output_idx_dim1, output_idx_dim2;
@@ -230,15 +235,6 @@ void memReadData(
 		uchar  	      win_itm_x, win_itm_y;
 		ushort 	      win_itm_z;
 		uint   item_loop_bound;
-
-		for (int i = 0; i < win_size_xyz_div_vecsize; i+=4) {				
-			if (out_idx_xyz == 0) {
-				win_buffer[0][i] = win_buffer_temp[i];
-				win_buffer[0][i+1] = win_buffer_temp[i+1];
-				win_buffer[0][i+2] = win_buffer_temp[i+2];
-				win_buffer[0][i+3] = win_buffer_temp[i+3];
-			}
-		}
 
 		// special case when split==1, the output feature maps depend on only half the input feature maps
 		if(split==0)
@@ -281,6 +277,7 @@ void memReadData(
 				feature_idx_dim2 = win_itm_y+gp_num_y_winbuf*CONV_GP_SIZE_Y*stride;
 				feature_idx_dim3 = win_itm_z;
 
+				/*
 				if((feature_idx_dim1>=padding && feature_idx_dim1<data_dim1+padding) && (feature_idx_dim2>=padding && feature_idx_dim2<data_dim2+padding)){
 								
 					data_vec = bottom[data_offset*data_dim1xdim2 + feature_idx_dim3*data_dim1xdim2 + (feature_idx_dim2-padding)*data_dim1 + (feature_idx_dim1-padding)];
@@ -291,6 +288,10 @@ void memReadData(
 						data_vec.data[vv] = CZERO;
 					}
 				}
+				*/
+
+				data_vec = bottom[data_offset*data_dim1xdim2 + feature_idx_dim3*data_dim1xdim2 + feature_idx_dim2*data_dim1 + feature_idx_dim1];
+
 				win_buffer[(~flag)&0x01][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec;	
 
 				// used as loop counters
@@ -396,11 +397,12 @@ void memReadBias(
 			uchar	conv_y,
 			__global channel_scal	*restrict bias)
 {	
-			
+		
+
 	channel_scal	bias_ch_in;
 	ushort conv_xy = conv_x * conv_y;
 
-	for (uchar i = 0; i < weight_dim4_div_lane; i++) {
+	for (ushort i = 0; i < weight_dim4_div_lane; i++) {
 		bias_ch_in = bias[i];
 		for (ushort j = 0; j < conv_xy; j++) {
 			write_channel_intel(bias_ch, bias_ch_in);
@@ -712,7 +714,7 @@ void maxPool(
 	}
 }
 
-
+/*
 // Store Data to Global Memory
 __kernel
 __attribute__((reqd_work_group_size(1,1,LANE_NUM)))
@@ -788,6 +790,63 @@ void memWrite(
 	barrier(CLK_LOCAL_MEM_FENCE);
 
 }
+*/
+
+// Store Data to Global Memory
+// For the memWrite, the VEC_SIZE and LANE_NUM should be equal
+__kernel
+__attribute__((task))
+void memWrite(
+				// Params Ports
+				uchar  out_dim1,
+				uchar  out_dim2,
+				ushort out_dim3,
+				ushort out_dim1xbatch, // out_dim1 x sqrt(batch_size)
+				uint   out_dim1x2xbatch, // out_dim1 x out_dim2 x batch_size
+				uchar  batch_indx_dim1,
+				uchar  batch_indx_dim2,
+				uchar  bypass,
+				uchar  padd_offset,
+				uchar  out_dim12_padding,
+				// Data Ports
+                		__global channel_scal *restrict top
+				)
+{
+
+
+	ushort out_dim3_div_lanenum = out_dim3 / LANE_NUM;
+	
+	printf ("[FPGA] out_dim3_div_lanenum=%d, out_dim2=%d, out_dim1=%d\n", out_dim3_div_lanenum, out_dim2, out_dim1);
+
+	for (ushort i = 0; i < out_dim3_div_lanenum; i+=1) {
+		for (uchar j = 0; j < out_dim2; j++) {
+			for (uchar k = 0; k < out_dim1; k++) {
+				
+				if ((k >= out_dim12_padding && k < out_dim1 - out_dim12_padding) && (j >= out_dim12_padding && j < out_dim2-+ out_dim12_padding)) {
+					//printf ("[FPGA] Channel at i=%d, j=%d, k=%d\n", i, j, k);
+					channel_scal temp;
+				
+					if ((bypass&0x01) == 0x01) {
+						temp = read_channel_intel(bypass_ch);
+					} else {
+						temp = read_channel_intel(pool_ch);
+					}
+					top[i*out_dim1x2xbatch + j*out_dim1 + k] = temp;
+				} else {
+					//printf ("[FPGA] Zero at i=%d, j=%d, k=%d\n", i, j, k);
+					channel_scal temp;
+					
+					#pragma unroll
+					for (int z = 0; z < LANE_NUM; z++) {
+						temp.lane[z] = 0;
+					}	
+					top[i*out_dim1x2xbatch + j*out_dim1 + k] = temp;
+				}
+			}
+		}
+	}
+
+}
 
 
 __kernel
@@ -797,6 +856,7 @@ void lrn(
 			uchar data_dim1,
 			uchar data_dim2,
 			char  frac_dout,
+			uchar out_dim12_padding,
 			// Data Ports
 			__global lane_data *restrict bottom,
 			__global lane_data *restrict top
@@ -835,7 +895,7 @@ void lrn(
 	// Load the all data in one line along dim3 into local line buffer
 	#pragma unroll
 	for(unsigned char ll=0; ll<VEC_SIZE; ll++){
-		z_buffer[global_z*VEC_SIZE+ll+LRN_WIN_SIZE/2] = bottom[global_z*data_dim2*data_dim1 + global_y*data_dim1+ global_x].data[ll];
+		z_buffer[global_z*VEC_SIZE+ll+LRN_WIN_SIZE/2] = bottom[global_z*data_dim2*data_dim1 + (global_y+out_dim12_padding)*data_dim1+ global_x+out_dim12_padding].data[ll];
 	}
 	
 	//Padding left
@@ -907,8 +967,9 @@ void lrn(
 	for(unsigned char vv=0; vv<VEC_SIZE; vv++){
 		data_out_partial.data[vv]=lrn_buffer[global_z*VEC_SIZE+vv];
 	}
-	top[global_z*data_dim2*data_dim1 + global_y*data_dim1 + global_x] = data_out_partial;
+	top[global_z*data_dim2*data_dim1 + (global_y+out_dim12_padding)*data_dim1 + global_x+out_dim12_padding] = data_out_partial;
 
+/*
 	if (global_z >= 0 && global_z <= 3) {
 		if (global_y >= 0 && global_y <= 3) {
 			if (global_x >= 0 && global_x <= 3) {
@@ -921,7 +982,7 @@ void lrn(
 			}
 		}
 	}
-	
+*/	
 	#ifdef DEBUG_LRN_OUT
 	if(global_z==0&&global_x==0&&global_y==0)
 	printf("\nKernel LRN OUT: x=%d, y=%d, z=%d, result=%f\n", global_x, global_y, global_z, (float)data_out_partial.data[0]);
