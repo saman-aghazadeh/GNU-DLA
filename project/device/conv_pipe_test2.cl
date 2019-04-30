@@ -822,26 +822,23 @@ void memWrite(
 		for (uchar j = 0; j < out_dim2; j++) {
 			for (uchar k = 0; k < out_dim1; k++) {
 				
+				channel_scal temp;
 				if ((k >= out_dim12_padding && k < out_dim1 - out_dim12_padding) && (j >= out_dim12_padding && j < out_dim2-+ out_dim12_padding)) {
 					//printf ("[FPGA] Channel at i=%d, j=%d, k=%d\n", i, j, k);
-					channel_scal temp;
 				
 					if ((bypass&0x01) == 0x01) {
 						temp = read_channel_intel(bypass_ch);
 					} else {
 						temp = read_channel_intel(pool_ch);
 					}
-					top[i*out_dim1x2xbatch + j*out_dim1 + k] = temp;
 				} else {
 					//printf ("[FPGA] Zero at i=%d, j=%d, k=%d\n", i, j, k);
-					channel_scal temp;
-					
 					#pragma unroll
 					for (int z = 0; z < LANE_NUM; z++) {
 						temp.lane[z] = 0;
 					}	
-					top[i*out_dim1x2xbatch + j*out_dim1 + k] = temp;
 				}
+				top[i*out_dim1x2xbatch + j*out_dim1 + k] = temp;
 			}
 		}
 	}
