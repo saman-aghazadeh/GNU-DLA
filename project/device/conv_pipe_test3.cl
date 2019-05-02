@@ -181,10 +181,10 @@ void memReadData(
 	
 	for(unsigned short win_itm_z=0; win_itm_z<weight_dim3/VEC_SIZE; win_itm_z++){
 		for(unsigned char  win_itm_y=0; win_itm_y<win_size_y; win_itm_y++){
-			for(unsigned char  win_itm_x=0; win_itm_x<win_size_x; win_itm_x++){
+			for(unsigned char  win_itm_x=0; win_itm_x<win_size_x; win_itm_x+=2){
 				ushort feature_idx_dim1, feature_idx_dim2;
 				ushort feature_idx_dim3;
-				lane_data data_vec;
+				lane_data data_vec[2];
 
 				feature_idx_dim1 = win_itm_x;
 				feature_idx_dim2 = win_itm_y;
@@ -203,9 +203,11 @@ void memReadData(
 				}
 				*/
 
-				data_vec = bottom[feature_idx_dim3*data_dim1xdim2 + feature_idx_dim2*data_dim1 + feature_idx_dim1];
+				data_vec[0] = bottom[feature_idx_dim3*data_dim1xdim2 + feature_idx_dim2*data_dim1 + feature_idx_dim1];
+				data_vec[1] = bottom[feature_idx_dim3*data_dim1xdim2 + feature_idx_dim2*data_dim1 + feature_idx_dim1 + 1];
 			
-				win_buffer[0][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec;
+				win_buffer[0][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec[0];
+				win_buffer[0][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x + 1] = data_vec[1];
 				
 			}
 		}
@@ -225,7 +227,7 @@ void memReadData(
 	gp_num_y = 0;
 	out_idx_z = 0;
 
-	// #pragma ivdep array(win_buffer)
+	#pragma ivdep array(win_buffer)
 	for(unsigned int out_idx_xyz=0; out_idx_xyz<(weight_dim4_div_lane*group_num_y*group_num_x); out_idx_xyz++){
 		ushort        data_offset = 0; // assuming the 1st layer is not in split
 		
@@ -290,8 +292,11 @@ void memReadData(
 				}
 				*/
 
-				data_vec = bottom[data_offset*data_dim1xdim2 + feature_idx_dim3*data_dim1xdim2 + feature_idx_dim2*data_dim1 + feature_idx_dim1];
-				win_buffer[(~flag)&0x01][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec;
+				data_vec[0] = bottom[data_offset*data_dim1xdim2 + feature_idx_dim3*data_dim1xdim2 + feature_idx_dim2*data_dim1 + feature_idx_dim1];
+				data_vec[1] = bottom[data_offset*data_dim1xdim2 + feature_idx_dim3*data_dim1xdim2 + feature_idx_dim2*data_dim1 + feature_idx_dim1 + 1];
+
+				win_buffer[(~flag)&0x01][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x] = data_vec[0];	
+				win_buffer[(~flag)&0x01][win_itm_z*win_size_y*win_size_x + win_itm_y*win_size_x + win_itm_x + 1] = data_vec[1];	
 
 				// used as loop counters
 				if((win_itm_z==weight_dim3/VEC_SIZE-1) && (win_itm_y==win_size_y-1) && (win_itm_x==win_size_x-1))
