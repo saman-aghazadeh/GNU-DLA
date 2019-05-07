@@ -152,9 +152,12 @@ frac_w, frac_din, frac_dout
 
 // Define the kernel names used
 const char *knl_name_memRdData = "memReadData";
+const char *knl_name_memRdDataArb = "memReadDataArb";
 const char *knl_name_memRdBias = "memReadBias";
 const char *knl_name_memRdWeight = "memReadWeight";
-const char *knl_name_conv  = "coreConv";
+const char *knl_name_conv1  = "coreConv1";
+const char *knl_name_conv2  = "coreConv2";
+const char *knl_name_bypass = "bypassIntercept";
 const char *knl_name_Pool  = "maxPool";
 const char *knl_name_memWr = "memWrite";
 const char *knl_name_lrn   = "lrn";
@@ -170,9 +173,12 @@ cl_context context = NULL;
 cl_program program = NULL;
 scoped_array<cl_device_id> device;
 scoped_array<cl_kernel> knl_memRdData;
+scoped_array<cl_kernel> knl_memRdDataArb;
 scoped_array<cl_kernel> knl_memRdBias;
 scoped_array<cl_kernel> knl_memRdWeight;
-scoped_array<cl_kernel> knl_conv;
+scoped_array<cl_kernel> knl_conv1;
+scoped_array<cl_kernel> knl_conv2;
+scoped_array<cl_kernel> knl_bypass;
 scoped_array<cl_kernel> knl_memWr;
 scoped_array<cl_kernel> knl_pool;
 scoped_array<cl_kernel> knl_lrn;
@@ -181,9 +187,12 @@ scoped_array<cl_kernel> knl_ser;
 scoped_array<cl_kernel> knl_deser;
 #endif 
 scoped_array<cl_command_queue> que_memRdData;
+scoped_array<cl_command_queue> que_memRdDataArb;
 scoped_array<cl_command_queue> que_memRdBias;
 scoped_array<cl_command_queue> que_memRdWeight;
-scoped_array<cl_command_queue> que_conv;
+scoped_array<cl_command_queue> que_conv1;
+scoped_array<cl_command_queue> que_conv2;
+scoped_array<cl_command_queue> que_bypass;
 scoped_array<cl_command_queue> que_memWr;
 scoped_array<cl_command_queue> que_pool;
 scoped_array<cl_mem> data_buf;
@@ -296,15 +305,21 @@ int main(int argc, char** argv)
 
 	// Create per-device objects.
 	que_memRdData.reset(num_devices);
+	que_memRdDataArb.reset(num_devices);
 	que_memRdBias.reset(num_devices);
 	que_memRdWeight.reset(num_devices);
-	que_conv.reset(num_devices);
+	que_conv1.reset(num_devices);
+	que_conv2.reset(num_devices);
+	que_bypass.reset(num_devices);
 	que_memWr.reset(num_devices);
 	que_pool.reset(num_devices);
 	knl_memRdData.reset(num_devices);
+	knl_memRdDataArb.reset(num_devices);
 	knl_memRdBias.reset(num_devices);
 	knl_memRdWeight.reset(num_devices);
-	knl_conv.reset(num_devices);
+	knl_conv1.reset(num_devices);
+	knl_conv2.reset(num_devices);
+	knl_bypass.reset(num_devices);
 	knl_memWr.reset(num_devices);
 	knl_pool.reset(num_devices);
 	knl_lrn.reset(num_devices);
@@ -334,20 +349,29 @@ int main(int argc, char** argv)
 		// Command queue
 		que_memRdData[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue 0");
+		que_memRdDataArb[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
+		checkError(status, "Failed to create command queue 0.1.1");
 		que_memRdBias[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue 0.1");
 		que_memRdWeight[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue 0.2");
-		que_conv[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
-		checkError(status, "Failed to create command queue 1");
-		que_memWr[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
+		que_conv1[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
+		checkError(status, "Failed to create command queue 1.1");
+		que_conv2[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
+		checkError(status, "Failed to create command queue 1.2");
+		que_bypass[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue 2");
-		que_pool[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
+		que_memWr[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue 3");
+		que_pool[i] = clCreateCommandQueue(context, device[i], CL_QUEUE_PROFILING_ENABLE, &status);
+		checkError(status, "Failed to create command queue 4");
 
 		// Kernel
 		knl_memRdData[i] = clCreateKernel(program, knl_name_memRdData, &status);
 		checkError(status, "Failed to create memRdData kernel");
+
+		knl_memRdDataArb[i] = clCreateKernel(program, knl_name_memRdDataArb, &status);
+		checkError(status, "Failed to create memRdDataArb kernel");
 
 		knl_memRdBias[i] = clCreateKernel(program, knl_name_memRdBias, &status);
 		checkError(status, "Failed to create memRdBias kernel");
@@ -355,8 +379,14 @@ int main(int argc, char** argv)
 		knl_memRdWeight[i] = clCreateKernel(program, knl_name_memRdWeight, &status);
 		checkError(status, "Failed to create memRdWeight kernel");
 
-		knl_conv[i] = clCreateKernel(program, knl_name_conv, &status);
-		checkError(status, "Failed to create conv kernel");
+		knl_conv1[i] = clCreateKernel(program, knl_name_conv1, &status);
+		checkError(status, "Failed to create conv 1 kernel");
+
+		knl_conv2[i] = clCreateKernel(program, knl_name_conv2, &status);
+		checkError(status, "Failed to create conv 2 kernel");
+		
+		knl_bypass[i] = clCreateKernel(program, knl_name_bypass, &status);
+		checkError(status, "Failed to create bypass kernel");
 
 		knl_pool[i] = clCreateKernel(program, knl_name_Pool, &status);
 		checkError(status, "Failed to create pooling kernel");
@@ -496,9 +526,12 @@ int main(int argc, char** argv)
 
 	// Execute the kernel
 	scoped_array<cl_event> memRdData_event(num_devices);
+	scoped_array<cl_event> memRdDataArb_event(num_devices);
 	scoped_array<cl_event> memRdBias_event(num_devices);
 	scoped_array<cl_event> memRdWeight_event(num_devices);
-	scoped_array<cl_event> conv_event(num_devices);
+	scoped_array<cl_event> conv1_event(num_devices);
+	scoped_array<cl_event> conv2_event(num_devices);
+	scoped_array<cl_event> bypass_event(num_devices);
 	scoped_array<cl_event> pool_event(num_devices);
 	scoped_array<cl_event> memWr_event(num_devices);
 	scoped_array<cl_event> lrn_event(num_devices);
@@ -510,9 +543,12 @@ int main(int argc, char** argv)
 	// Recorde the excution time of each operation for each layer
 #ifndef USE_OPENCV
 	cl_ulong memWr_time[LAYER_NUM];
-	cl_ulong conv_time[LAYER_NUM];
+	cl_ulong conv1_time[LAYER_NUM];
+	cl_ulong conv2_time[LAYER_NUM];
+	cl_ulong bypass_time[LAYER_NUM];
 	cl_ulong pool_time[LAYER_NUM];
 	cl_ulong memRd_time[LAYER_NUM];
+	cl_ulong memRdArb_time[LAYER_NUM];
 	cl_ulong lrn_time[LAYER_NUM];
 #ifdef CASCADE
 	cl_ulong ser_time[LAYER_NUM];
@@ -561,11 +597,14 @@ int main(int argc, char** argv)
 		for(unsigned char j = 0; j < LAYER_NUM; ++j){
 
 #ifndef USE_OPENCV
-			memWr_time[j] =0;
-			conv_time[j]  =0;
-			pool_time[j]  =0;
-			memRd_time[j] =0;
-			lrn_time[j]   =0;
+			memWr_time[j]  =0;
+			conv1_time[j]  =0;
+			conv2_time[j]  =0;
+			bypass_time[j] =0;
+			pool_time[j]   =0;
+			memRd_time[j]  =0;
+			memRdArb_time[j] =0;
+			lrn_time[j]    =0;
 #endif
 
 			if(j<CONV_NUM)
@@ -784,29 +823,72 @@ int main(int argc, char** argv)
 			checkError(status, "Failed to set argument %d kernel memRdWeight", argi-1);
 
 			//  Set knl_conv arguments.
-			argi = 0;
 
 			conv_loop_cnt = layer_config[j][weight_w]*layer_config[j][weight_h]*layer_config[j][weight_n]/VEC_SIZE;
 			conv_output_num = layer_config[j][conv_x]*layer_config[j][conv_y]*layer_config[j][weight_m]/LANE_NUM; // new weight_m is divisible by LANE_NUM
 			conv_control = (layer_config[j][conv_relu]&0x01)|(((~layer_config[j][pool_on])&0x01)<<1);
 
-			status = clSetKernelArg(knl_conv[i], argi++, sizeof(cl_uint), &conv_output_num);
-			checkError(status, "Failed to set argument %d of kernel conv", argi - 1);
 
-			status = clSetKernelArg(knl_conv[i], argi++, sizeof(cl_uint), &conv_loop_cnt);
-			checkError(status, "Failed to set argument %d of kernel conv", argi - 1);
+			unsigned int conv1_output_num;
+			unsigned int conv2_output_num;
 
-			status = clSetKernelArg(knl_conv[i], argi++, sizeof(cl_uint), &conv_control);
-			checkError(status, "Failed to set argument %d of kernel conv", argi - 1);
+			if (conv_output_num % 2 == 0) {
+				conv1_output_num = conv_output_num / 2;
+				conv2_output_num = conv_output_num / 2;
+			} else {
+				conv1_output_num = conv_output_num / 2 + 1;
+				conv2_output_num = conv_output_num / 2;
+			}
 
-			status = clSetKernelArg(knl_conv[i], argi++, sizeof(cl_char), &precision_config[j][frac_w]);
-			checkError(status, "Failed to set argument %d of kernel conv", argi - 1);
+			argi = 0;
 
-			status = clSetKernelArg(knl_conv[i], argi++, sizeof(cl_char), &precision_config[j][frac_din]);
-			checkError(status, "Failed to set argument %d of kernel conv", argi - 1);
+			status = clSetKernelArg(knl_memRdDataArb[i], argi++, sizeof(cl_uint), &conv_loop_cnt);
+			checkError(status, "Failed to set argument %d of kernel memRdDataArb", argi - 1);
 
-			status = clSetKernelArg(knl_conv[i], argi++, sizeof(cl_char), &precision_config[j][frac_dout]);
-			checkError(status, "Failed to set argument %d of kernel conv", argi - 1);
+			status = clSetKernelArg(knl_memRdDataArb[i], argi++, sizeof(cl_uint), &conv_output_num);
+			checkError(status, "Failed to set argument %d of kernel memRdDataArb", argi - 1);
+
+			argi = 0;
+
+			printf ("conv1_output_num=%d, conv2_output_num=%d\n", conv1_output_num, conv2_output_num);
+
+			status = clSetKernelArg(knl_conv1[i], argi++, sizeof(cl_uint), &conv1_output_num);
+			checkError(status, "Failed to set argument %d of kernel conv1", argi - 1);
+
+			status = clSetKernelArg(knl_conv1[i], argi++, sizeof(cl_uint), &conv_loop_cnt);
+			checkError(status, "Failed to set argument %d of kernel conv1", argi - 1);
+
+			status = clSetKernelArg(knl_conv1[i], argi++, sizeof(cl_uint), &conv_control);
+			checkError(status, "Failed to set argument %d of kernel conv1", argi - 1);
+
+			status = clSetKernelArg(knl_conv1[i], argi++, sizeof(cl_char), &precision_config[j][frac_w]);
+			checkError(status, "Failed to set argument %d of kernel conv1", argi - 1);
+
+			status = clSetKernelArg(knl_conv1[i], argi++, sizeof(cl_char), &precision_config[j][frac_din]);
+			checkError(status, "Failed to set argument %d of kernel conv1", argi - 1);
+
+			status = clSetKernelArg(knl_conv1[i], argi++, sizeof(cl_char), &precision_config[j][frac_dout]);
+			checkError(status, "Failed to set argument %d of kernel conv1", argi - 1);
+
+			argi = 0;
+			
+			status = clSetKernelArg(knl_conv2[i], argi++, sizeof(cl_uint), &conv2_output_num);
+			checkError(status, "Failed to set argument %d of kernel conv2", argi - 1);
+
+			status = clSetKernelArg(knl_conv2[i], argi++, sizeof(cl_uint), &conv_loop_cnt);
+			checkError(status, "Failed to set argument %d of kernel conv2", argi - 1);
+
+			status = clSetKernelArg(knl_conv2[i], argi++, sizeof(cl_uint), &conv_control);
+			checkError(status, "Failed to set argument %d of kernel conv2", argi - 1);
+
+			status = clSetKernelArg(knl_conv2[i], argi++, sizeof(cl_char), &precision_config[j][frac_w]);
+			checkError(status, "Failed to set argument %d of kernel conv2", argi - 1);
+
+			status = clSetKernelArg(knl_conv2[i], argi++, sizeof(cl_char), &precision_config[j][frac_din]);
+			checkError(status, "Failed to set argument %d of kernel conv2", argi - 1);
+
+			status = clSetKernelArg(knl_conv2[i], argi++, sizeof(cl_char), &precision_config[j][frac_dout]);
+			checkError(status, "Failed to set argument %d of kernel conv2", argi - 1);
 
 			//  Set knl_pool arguments.
 			if(layer_config[j][pool_on]){
@@ -828,7 +910,6 @@ int main(int argc, char** argv)
 			}
 
 			//  Set knl_memWr arguments.
-			argi = 0;
 			unsigned char batch_size_in_dim_log;
 			unsigned char mask = 0xff;
 			unsigned char memWr_dim1, memWr_dim2;
@@ -847,6 +928,17 @@ int main(int argc, char** argv)
 				memWr_dim3 = layer_config[j][conv_z];
 			}
 
+
+			argi = 0;
+			unsigned int out_dim1x2x3xbatch = memWr_dim1 * memWr_dim2 * memWr_dim3 / LANE_NUM;	
+
+			status = clSetKernelArg(knl_bypass[i], argi++, sizeof(cl_uint), &out_dim1x2x3xbatch);
+			checkError(status, "Failed to set argument %d of kernel bypass", argi - 1);
+
+			status = clSetKernelArg(knl_bypass[i], argi++, sizeof(cl_uchar), &pool_bypass);
+			checkError(status, "Failed to set argument %d of kernel bypass", argi - 1);
+
+			argi = 0;
 			status = clSetKernelArg(knl_memWr[i], argi++, sizeof(cl_uchar), &memWr_dim1);
 			checkError(status, "Failed to set argument %d of kernel memWr", argi - 1);
 
@@ -1015,6 +1107,9 @@ int main(int argc, char** argv)
 			status = clEnqueueTask(que_memRdData[i], knl_memRdData[i], 0, NULL, &memRdData_event[i]);
 			checkError(status, "Failed to launch kernel memRD kernel");
 
+			status = clEnqueueTask(que_memRdDataArb[i], knl_memRdDataArb[i], 0, NULL, &memRdDataArb_event[i]);
+			checkError(status, "Failed to launch kernel memRDArb kernel");
+
 			status = clEnqueueTask(que_memRdBias[i], knl_memRdBias[i], 0, NULL, &memRdBias_event[i]);
 			checkError(status, "Failed to launch kernel memRdBias kernel");
 
@@ -1025,8 +1120,11 @@ int main(int argc, char** argv)
 			if(k == 0&&pic_num==1)
 				printf("\nLaunching single work-item kernel Conv\n");
 
-			status = clEnqueueTask(que_conv[i], knl_conv[i], 0, NULL, &conv_event[i]);
-			checkError(status, "Failed to launch kernel conv kernel");
+			status = clEnqueueTask(que_conv1[i], knl_conv1[i], 0, NULL, &conv1_event[i]);
+			checkError(status, "Failed to launch kernel conv1 kernel");
+
+			status = clEnqueueTask(que_conv2[i], knl_conv2[i], 0, NULL, &conv2_event[i]);
+			checkError(status, "Failed to launch kernel conv2 kernel");
 
 			// kernel pool
 			if(layer_config[j][pool_on]){
@@ -1034,6 +1132,9 @@ int main(int argc, char** argv)
 				checkError(status, "Failed to launch kernel pooling");
 				if(k == 0&&pic_num==1)
 					printf("\nLaunching single work-item kernel Pooling\n");
+			} else {
+				status = clEnqueueTask(que_bypass[i], knl_bypass[i], 0, NULL, &bypass_event[i]);
+				checkError(status, "Failed to launch kernel bypass");
 			}
 
 			// kernel memWr
@@ -1142,9 +1243,13 @@ int main(int argc, char** argv)
 				deser_time[j] += getKernelStartEndTime(deser_event[i], "deser");
 #endif
 			memRd_time[j] += getKernelStartEndTime(memRdData_event[i], "memRd");
-			conv_time[j]  += getKernelStartEndTime(conv_event[i], "conv");
-			if(layer_config[j][pool_on])
+			conv1_time[j] += getKernelStartEndTime(conv1_event[i], "conv1");
+			conv2_time[j] += getKernelStartEndTime(conv2_event[i], "conv2");
+			if(layer_config[j][pool_on]) {
 				pool_time[j] += getKernelStartEndTime(pool_event[i], "pool");
+			} else {
+				bypass_time[j] += getKernelStartEndTime(bypass_event[i], "bypass");
+			}
 			memWr_time[j] += getKernelStartEndTime(memWr_event[i], "memWr");
 			if(layer_config[j][lrn_on])
 				lrn_time[j] += getKernelStartEndTime(lrn_event[i], "lrn");
@@ -1159,17 +1264,24 @@ int main(int argc, char** argv)
 			// Must release event object to avoid performance degeneration !!!
 			clReleaseEvent(memRdData_event[i]);
 			checkError(status, "Failed to release memRDData event object");
+			clReleaseEvent(memRdDataArb_event[i]);
+			checkError(status, "Failed to release memRdDataArb event object");
 			clReleaseEvent(memRdBias_event[i]);
 			checkError(status, "Failed to release memRDBias event object");
 			clReleaseEvent(memRdWeight_event[i]);
 			checkError(status, "Failed to release memRDWeight even object");
-			clReleaseEvent(conv_event[i]);
-			checkError(status, "Failed to release Conv event object");
+			clReleaseEvent(conv1_event[i]);
+			checkError(status, "Failed to release Conv1 event object");
+			clReleaseEvent(conv2_event[i]);
+			checkError(status, "Failed to release Conv2 event object");
 			clReleaseEvent(memWr_event[i]);
 			checkError(status, "Failed to release memWR event object");
 			if(layer_config[j][pool_on]){
 				status = clReleaseEvent(pool_event[i]);
-				checkError(status, "Failed to release pool event object");
+				checkError(status, "Failed to release pool event object");	
+			} else {
+				status = clReleaseEvent(bypass_event[i]);
+				checkError(status, "Failed to release bypass event object");
 			}
 			if(layer_config[j][lrn_on]){
 				status = clReleaseEvent(lrn_event[i]);
@@ -1233,11 +1345,12 @@ int main(int argc, char** argv)
 	for(unsigned j = 0; j < LAYER_NUM; ++j) {
 		printf("  Layer-%d:\n", j+1);
 		printf("    MemRd: %0.3f ms\n", double(memRd_time[j])/batch_float * 1e-6);
-		printf("    Conv : %0.3f ms\n", double(conv_time[j])/batch_float * 1e-6);
+		printf("    Conv1 : %0.3f ms\n", double(conv1_time[j])/batch_float * 1e-6);
+		printf("    Conv2 : %0.3f ms\n", double(conv2_time[j])/batch_float * 1e-6);
 		printf("    Pool : %0.3f ms\n", double(pool_time[j])/batch_float * 1e-6);
 		printf("    MemWr: %0.3f ms\n", double(memWr_time[j])/batch_float * 1e-6);
 		printf("    Lrn  : %0.3f ms\n", double(lrn_time[j])/batch_float * 1e-6);
-		kernel_time += conv_time[j];
+		kernel_time += conv1_time[j];
 	}
 	printf("\nTotal kernel runtime %0.3f ms \n", double(kernel_time) * 1e-6);
 	printf("Batch size = %d, average process time per batch: %0.3f ms \n\n", input_config[batch_size], double(kernel_time/batch_float) * 1e-6);
@@ -2058,8 +2171,11 @@ void cleanup()
 		if(knl_memRdWeight && knl_memRdWeight[i]) {
 			clReleaseKernel(knl_memRdWeight[i]);
 		}
-		if(knl_conv && knl_conv[i]) {
-			clReleaseKernel(knl_conv[i]);
+		if(knl_conv1 && knl_conv1[i]) {
+			clReleaseKernel(knl_conv1[i]);
+		}
+		if(knl_conv2 && knl_conv2[i]) {
+			clReleaseKernel(knl_conv2[i]);
 		}
 		if(knl_memWr && knl_memWr[i]) {
 			clReleaseKernel(knl_memWr[i]);
@@ -2084,8 +2200,11 @@ void cleanup()
 		if(que_memRdWeight && que_memRdWeight[i]) {
 			clReleaseCommandQueue(que_memRdWeight[i]);
 		}
-		if(que_conv && que_conv[i]) {
-			clReleaseCommandQueue(que_conv[i]);
+		if(que_conv1 && que_conv1[i]) {
+			clReleaseCommandQueue(que_conv1[i]);
+		}
+		if(que_conv2 && que_conv2[i]) {
+			clReleaseCommandQueue(que_conv2[i]);
 		}
 		if(que_memWr && que_memWr[i]) {
 			clReleaseCommandQueue(que_memWr[i]);
