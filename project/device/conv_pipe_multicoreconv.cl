@@ -424,6 +424,8 @@ void memReadWeight(
 	uint conv_xxy = conv_x * conv_y;
 
 	uchar  data_ch_toggle = 0;
+	
+	#pragma max_concurrency 1
 	for (ushort i = 0; i < weight_dim4_div_lane; i++) {
 		channel_vec weight_buffer[WEIGHT_BUF_SIZE];
 		for (uint p = 0; p < weight_dim1x2x3/VEC_SIZE; p+=4) {
