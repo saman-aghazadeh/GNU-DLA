@@ -364,8 +364,8 @@ int main(int argc, char** argv)
 		knl_memWr[i] = clCreateKernel(program, knl_name_memWr, &status);
 		checkError(status, "Failed to create memWr kernel");
 
-		knl_lrn[i] = clCreateKernel(program, knl_name_lrn, &status);
-		checkError(status, "Failed to create lrn kernel");
+		//knl_lrn[i] = clCreateKernel(program, knl_name_lrn, &status);
+		//checkError(status, "Failed to create lrn kernel");
 #ifdef CASCADE
 		knl_ser[i] = clCreateKernel(program, knl_name_ser, &status);
 		checkError(status, "Failed to create ser kernel");

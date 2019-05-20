@@ -67,11 +67,11 @@ typedef struct {
 
 
 #ifndef EMULATE
-channel channel_vec    data_ch    __attribute__((depth(0)));
+channel lane_data      data_ch    __attribute__((depth(0)));
 channel channel_vec    weight_ch  __attribute__((depth(0)));
 channel channel_scal   bias_ch    __attribute__((depth(8)));
-channel channel_scal   conv_ch    __attribute__((depth(CHN_DEPTH)));
-channel channel_scal   pool_ch    __attribute__((depth(CHN_DEPTH)));
+//channel channel_scal   conv_ch    __attribute__((depth(CHN_DEPTH)));
+//channel channel_scal   pool_ch    __attribute__((depth(CHN_DEPTH)));
 channel channel_scal   bypass_ch  __attribute__((depth(CHN_DEPTH)));
 #else
 channel channel_vec    data_ch_write    __attribute__((io("dataCh")))   __attribute__((depth(0)));
@@ -323,11 +323,11 @@ void memReadData(
 				// data
 				data_vec = win_buffer[flag][output_idx_dim3*win_size_y*win_size_x + output_idx_dim2*win_size_x + (output_idx_dim1+gp_item_idx_x*stride)];
 
-				#pragma unroll
-				for(unsigned char ll=0; ll<LANE_NUM; ll++){
-					data_ch_vec.lane[ll] = data_vec;
-				}
-				write_channel_intel(data_ch, data_ch_vec);
+				//#pragma unroll
+				//for(unsigned char ll=0; ll<LANE_NUM; ll++){
+				//	data_ch_vec.lane[ll] = data_vec;
+				//}
+				write_channel_intel(data_ch, data_vec);
 
 
 
@@ -431,7 +431,7 @@ void memReadWeight(
 
 	#pragma max_concurrency 1
 	for (ushort i = 0; i < weight_dim4_div_lane; i++) {
-		channel_vec weight_buffer[WEIGHT_BUF_SIZE];
+		channel_vec weight_buffer[WEIGHT_BUF_SIZE/8];
 		for (uint p = 0; p < weight_dim1x2x3/VEC_SIZE; p+=4) {
 			weight_buffer[p  ] = weights[i*(weight_dim1x2x3/VEC_SIZE) + p  ];
 			weight_buffer[p+1] = weights[i*(weight_dim1x2x3/VEC_SIZE) + p+1];	
@@ -472,7 +472,7 @@ void coreConv(
 			char  frac_dout
 			)
 {
-	channel_vec mac_data;
+	lane_data   mac_data;
  	channel_vec mac_weight;
 	channel_scal bias_ch_out;
 	channel_scal conv_ch_in;
@@ -520,7 +520,7 @@ void coreConv(
 			#pragma unroll
 			for(unsigned char ll=0; ll<LANE_NUM; ll++){
 				
-				lane_accum[ll] = (MASK_ACCUM & accum_piped[ll][PIPE_DEPTH-1]) + (MASK_MULT & mac(mac_data.lane[ll], mac_weight.lane[ll]));
+				lane_accum[ll] = (MASK_ACCUM & accum_piped[ll][PIPE_DEPTH-1]) + (MASK_MULT & mac(mac_data, mac_weight.lane[ll]));
 			
 				#pragma unroll
 				for(unsigned int p=PIPE_DEPTH-1; p>0; p-- ){
@@ -579,26 +579,28 @@ void coreConv(
 		}
 
 		// write convoluation results
-		if((contol&0x02)==0x02)
+		//if((contol&0x02)==0x02)
 			//by-pass pooling
 #ifndef EMULATE
 			write_channel_intel(bypass_ch, conv_ch_in);
 #else
 			write_channel_intel(bypass_ch_write, conv_ch_in);
 #endif
+		/*
 		else // to pooling kernel
 #ifndef EMULATE
 			write_channel_intel(conv_ch, conv_ch_in);
 #else
 			write_channel_intel(conv_ch_write, conv_ch_in);
 #endif
+		*/
 			//printf("Write channel item-%d is written in channel %d...\n", k, ll);
 
 	}// end of output loop
  
 }
 
-
+/*
 __kernel
 __attribute__((task))
 void maxPool(
@@ -716,7 +718,7 @@ void maxPool(
 
 	}
 }
-
+*/
 
 // Store Data to Global Memory
 __kernel
@@ -750,19 +752,20 @@ void memWrite(
 	__local DPTYPE buffer[LANE_NUM];
 
 	if(local_z==0){
-		if((bypass&0x01)==0x01)
+//		if((bypass&0x01)==0x01)
 #ifndef EMULATE
 			output = read_channel_intel(bypass_ch);
 #else
 			output = read_channel_intel(bypass_ch_read);
 #endif
-		else
+//		else
+/*
 #ifndef EMULATE
 			output = read_channel_intel(pool_ch);
 #else
 			output = read_channel_intel(pool_ch_read);
 #endif
-
+*/
 		#pragma unroll
 		for(uchar ll=0; ll<LANE_NUM; ll++){
 			buffer[ll]=output.lane[ll];
