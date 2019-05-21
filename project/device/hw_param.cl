@@ -42,6 +42,7 @@
 
 #define VEC_SIZE		4
 #define LANE_NUM		64
+#define W_VEC			8					  // This is the size of the Width data that is being piped into the PEs
 #define MEMRDWEIGHT_BANKWIDTH	128
 
 #define CHN_DEPTH           0
