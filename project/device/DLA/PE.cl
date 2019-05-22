@@ -55,11 +55,11 @@ __kernel void PE() {
 			// We have to load the weights into the weight_buffer. weights
 			// are loaded through the chain_weight
 			if (update_weights_signal == 0x01) {
+				bias = read_channel_intel(chain_bias_channels[id]);
 				for (char i = 0; i < num_weight_vecs; i++) {
 					lane_cols temp_weight = read_channel_intel(chain_weight_channels[id]);
 					weight_buffer[i] = temp_weight;
 				}
-				bias = read_channel_intel(chain_bias_channels[id]);
 			}
 
 			MACTYPE accumulation[W_VEC];

@@ -2,37 +2,50 @@ __kernel
 __attribute__((task))
 __attribute__((max_global_work_dim(0)))
 void memReadWeight(
+			// Number of layers involved
+			char config_size,
 			// Params ports
-			ushort	weight_dim4_div_lane,
-			uchar	conv_x,
-			uchar 	conv_y,
-			uint 	weight_dim1x2x3,
-			__global channel_vec	*restrict weights)
+			__global lane_cols	*restrict weights,
+			__global channel_scal	*restrict biases)
 
 {
 
-	uint conv_xxy = conv_x * conv_y;
 
-	#pragma max_concurrency 1
-	for (ushort i = 0; i < weight_dim4_div_lane; i++) {
-		channel_vec weight_buffer[WEIGHT_BUF_SIZE/8];
-		for (uint p = 0; p < weight_dim1x2x3/VEC_SIZE; p+=4) {
-			weight_buffer[p  ] = weights[i*(weight_dim1x2x3/VEC_SIZE) + p  ];
-			weight_buffer[p+1] = weights[i*(weight_dim1x2x3/VEC_SIZE) + p+1];	
-			weight_buffer[p+2] = weights[i*(weight_dim1x2x3/VEC_SIZE) + p+2];
-			weight_buffer[p+3] = weights[i*(weight_dim1x2x3/VEC_SIZE) + p+3];
-		}
-		for (uint j = 0; j < conv_xxy; j++) {
-			// channel_vec weight_buffer[WEIGHT_BUF_SIZE];
-			for (uint p = 0; p < weight_dim1x2x3/VEC_SIZE; p++) {
-				channel_vec weight_ch_vec;
-				// if ((i & j) == 0) {
-				// 	weight_buffer[p] = weights[i*(weight_dim1x2x3/VEC_SIZE) + p];
-				// }
-				weight_ch_vec = weight_buffer[p];
-				write_channel_intel(weight_ch, weight_ch_vec);
+	for (char i = 0; i < config_size; i++) {
+
+		memrd_weight_configuration config = read_channel_intel(memrd_weight_configuration_channel);
+
+		int weight_m = config.weight_m;
+		int weight_n = config.weight_n;
+		int weight_h = config.weight_h;
+		int weight_w = config.weight_w;
+		ushort num_plates = weight_h * (weight_n/VEC_SIZE);
+
+		uint weight_dimnxhxw_div_vecsize = weight_n*weight_h*weight_w/VEC_SIZE;
+		uint offset = 0;
+
+		for (ushort i = 0; i < weight_m; i+=LANE_NUM) {
+			lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+			channel_scal bias_buffer;
+
+			// Reading LANE_NUM of biases and send them to their 
+			// respective PE
+			bias_buffer = biases[i];
+
+			for (char w = 0; w < LANE_NUM; w++) {
+				// First send out the biases 
+				write_channel_intel(chain_bias_channels[w], bias_buffer.lane[w]);
+
+				// Now we read the weights and send them plate by plate to the 
+				// appropriate PE
+				for (ushort plate = 0; plate = num_plates; plate++) {
+					lane_cols cur_plate = weights[offset];
+					offset += 1;
+					write_channel_intel(chain_weight_channels[w], cur_plate);
+				}
+
 			}
 		}
-	}	 
+	}
 
 }

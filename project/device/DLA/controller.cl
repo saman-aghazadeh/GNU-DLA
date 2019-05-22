@@ -42,12 +42,22 @@ void controller(
 		int memwr_dst = configuration.memwr_dst;
 
 		// This part controls the memrd module
-		memrd_configuration memrd_config;
-		memrd_config.layer_type = layer_type;
-		memrd_config.data_w = data_w;
-		memrd_config.data_h = data_h;
+		memrd_data_configuration memrd_data_config;
+		memrd_data_config.layer_type = layer_type;
+		memrd_data_config.data_w = data_w;
+		memrd_data_config.data_h = data_h;
+		memrd_data_config.weight_m = weight_m;
+		memrd_data_config.weight_n = weight_n;
+		memrd_data_config.conv_padding = conv_padding;
+		write_channel_intel(memrd_data_configuration_channel, memrd_data_config);
 
-		write_channel_intel(memrd_configuration_channel, memrd_config);
+		// This part controls the memrdweights module
+		memrd_weight_configuration memrd_weight_config;
+		memrd_weight_config.weight_m = weight_m;
+		memrd_weight_config.weight_n = weight_n;
+		memrd_weight_config.weight_h = weight_h;
+		memrd_weight_config.weight_w = weight_w;
+		write_channel_intel(memrd_weight_configuration_channel, memrd_weight_config);
 
 		// This part controls the PEs
 		instruction inst;
@@ -57,10 +67,13 @@ void controller(
 		inst.frac_din = frac_din;
 		write_channel_intel(chain_instruction_channels[0], inst);
 
-		char done = 0;
-		write_channel_intel(chain_done_layer_signal_channel[0], done);
-
-		
+		// This part controls the memwr module
+		memwr_configuration memwr_config;
+		memwr_config.conv_x = conv_x;
+		memwr_config.conv_y = conv_y;
+		memwr_config.conv_z = conv_z;
+		memwr_config.weight_w = weight_w;
+		write_channel_intel(memwr_configuration_channel, memwr_config);
 
 	}
 
