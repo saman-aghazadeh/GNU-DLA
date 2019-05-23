@@ -10,6 +10,7 @@ void memReadWeight(
 
 {
 
+	uint layer_offset = 0;
 
 	for (char i = 0; i < config_size; i++) {
 
@@ -21,11 +22,9 @@ void memReadWeight(
 		int weight_w = config.weight_w;
 		ushort num_plates = weight_h * (weight_n/VEC_SIZE);
 
-		uint weight_dimnxhxw_div_vecsize = weight_n*weight_h*weight_w/VEC_SIZE;
 		uint offset = 0;
 
 		for (ushort i = 0; i < weight_m; i+=LANE_NUM) {
-			lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 			channel_scal bias_buffer;
 
 			// Reading LANE_NUM of biases and send them to their 
@@ -39,13 +38,15 @@ void memReadWeight(
 				// Now we read the weights and send them plate by plate to the 
 				// appropriate PE
 				for (ushort plate = 0; plate = num_plates; plate++) {
-					lane_cols cur_plate = weights[offset];
+					lane_cols cur_plate = weights[layer_offset + offset];
 					offset += 1;
 					write_channel_intel(chain_weight_channels[w], cur_plate);
 				}
 
 			}
 		}
+
+		layer_offset += (weight_h * weight_n * weight_m) / VEC_SIZE;
 	}
 
 }

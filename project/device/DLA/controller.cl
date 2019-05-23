@@ -47,6 +47,7 @@ void controller(
 		memrd_data_config.data_w = data_w;
 		memrd_data_config.data_h = data_h;
 		memrd_data_config.weight_m = weight_m;
+		memrd_data_config.weight_h = weight_h;
 		memrd_data_config.weight_n = weight_n;
 		memrd_data_config.conv_padding = conv_padding;
 		write_channel_intel(memrd_data_configuration_channel, memrd_data_config);
@@ -65,6 +66,7 @@ void controller(
 		inst.frac_w = frac_w;
 		inst.frac_dout = frac_dout;
 		inst.frac_din = frac_din;
+		inst.num_weight_plates = weight_h * (weight_n/VEC_SIZE);
 		write_channel_intel(chain_instruction_channels[0], inst);
 
 		// This part controls the memwr module

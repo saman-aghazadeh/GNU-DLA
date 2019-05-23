@@ -39,7 +39,7 @@ __kernel void PE() {
 		// Number of weight vectors that we are going to read
 		// it again should be equal to weight_height * weights_dim3/VEC_SIZE.
 		// 
-		char num_weight_vecs = inst.num_weight_vecs;
+		char num_weight_plates = inst.num_weight_plates;
 
 		// All the work that should be done in this layer
 		while (true) {
@@ -56,11 +56,16 @@ __kernel void PE() {
 			// are loaded through the chain_weight
 			if (update_weights_signal == 0x01) {
 				bias = read_channel_intel(chain_bias_channels[id]);
-				for (char i = 0; i < num_weight_vecs; i++) {
+				for (char i = 0; i < num_weight_plates; i++) {
 					lane_cols temp_weight = read_channel_intel(chain_weight_channels[id]);
 					weight_buffer[i] = temp_weight;
 				}
 			}
+
+			w_data accumulation;
+			w_data acc_sign_exten;
+			w_data acc_with_rnd_bit;
+			w_data acc_sum_bias;
 
 			MACTYPE accumulation[W_VEC];
 			MACTYPE acc_sign_exten[W_VEC];
@@ -77,7 +82,7 @@ __kernel void PE() {
 
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
-					accumulation[w] = 
+					accumulation.w_data[w] = 
 						(MASK_MULT & accumulation[w]) + 
 						MASK_MULT & mac(feature.cols[w], weight_buffer[i].cols[w]);
 				}
@@ -87,22 +92,22 @@ __kernel void PE() {
 			// Not sure why we have to do all these
 			#pragma unroll
 			for (unsigned i = 0; i < W_VEC; i++) {
-				if (accumulation[i] > 0)
-					acc_sign_exten[i] = 0x00;
+				if (accumulation.w_data[i] > 0)
+					acc_sign_exten.w_data[i] = 0x00;
 				else
-					acc_sign_exten[i] = ~(0xFFFFFFFF >> (frac_w+frac_din-frac_dout-1));
+					acc_sign_exten.w_data[i] = ~(0xFFFFFFFF >> (frac_w+frac_din-frac_dout-1));
 
-				acc_with_rnd_bit[i] = (acc_sign_exten[i] | (accumulation[i] >> (frac_w+frac_din-frac_dout-1))) + 0x01;
+				acc_with_rnd_bit.w_data[i] = (acc_sign_exten.w_data[i] | (accumulation.w_data[i] >> (frac_w+frac_din-frac_dout-1))) + 0x01;
 
 				// This part should be fixed
-				if (acc_with_rnd_bit[i] >= 256)
-					acc_sum_bias[i] = MASK9B & 0xFF;
-				else if (acc_with_rnd_bit[i] < -256)
-					acc_sum_bias[i] = MASK9B & 0x100;
+				if (acc_with_rnd_bit.w_data[i] >= 256)
+					acc_sum_bias.w_data[i] = MASK9B & 0xFF;
+				else if (acc_with_rnd_bit.w_data[i] < -256)
+					acc_sum_bias.w_data[i] = MASK9B & 0x100;
 				else
-					acc_sum_bias[i] = (MASK9B & acc_with_rnd_bit[i]) + (bias>>(frac_w+frac_din-frac_dout-1)) + 0x01;
+					acc_sum_bias.w_data[i] = (MASK9B & acc_with_rnd_bit.w_data[i]) + (bias>>(frac_w+frac_din-frac_dout-1)) + 0x01;
 
-				accumulation[i] = MASK8B & (acc_sum_bias[i] >> 0x01);
+				accumulation.w_data[i] = MASK8B & (acc_sum_bias.w_data[i] >> 0x01);
 
 				
 			}

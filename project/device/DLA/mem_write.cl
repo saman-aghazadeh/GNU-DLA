@@ -18,7 +18,6 @@ void memWrite(
 	bottom[0] = bottom0;
 	bottom[1] = bottom1;
 
-	// Ever
 	for (char i = 0; i < config_size; i++) {
 		memwr_configuration config = read_channel_intel(memwr_configuration_channel);
 

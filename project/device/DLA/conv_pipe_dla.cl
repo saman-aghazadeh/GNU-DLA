@@ -75,14 +75,13 @@ typedef struct {
 	channel_scal cols[W_INV_VEC];
 } inv_rows;
 
-// 
+//
 typedef struct {
 	uint conv_loop_cnt;
 	char frac_w;
 	char frac_din;
 	char frac_dout;
-	char num_weight_vecs;
-	char weight_dim4_div_LANE_NUM;
+	char num_weight_plates;
 } instruction;
 
 // configuration of the layer

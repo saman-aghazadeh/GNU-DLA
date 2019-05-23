@@ -1,15 +1,22 @@
 // Winograd transformer 
 __kernel
-__attribute__((task))
 __attribute__((max_global_work_dim(0)))
+__attribute__((autorun))
+__attribute__((num_compute_units(1)))
 
 void winogradTransform()
 {
 
-	lane_cols input = read_channel_intel(winograd_transform_channels);
+	// Transformation runs forever to convert the incoming data
+	// to the winograd counterpart
+	while (1) {
 
-	// Later we have to do something here
+		lane_cols input = read_channel_intel(winograd_transform_channels);
 
-	write_channel_intel(chain_data_channels[0], input);
+		// Later we have to do something here
+
+		write_channel_intel(chain_data_channels[0], input);
+
+	}
 
 }

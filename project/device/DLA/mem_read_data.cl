@@ -22,7 +22,7 @@ void memReadData(
 	for (char i = 0; i < config_size; i++) {
 
 		// Reading the configuration for the specific layer
-		memrd_data_configuration config = read_channel_intel(memrd_configuration_channel);
+		memrd_data_configuration config = read_channel_intel(memrd_data_configuration_channel);
 		int layer_type = config.layer_type;
 		int data_w = config.data_w;
 		int data_h = config.data_h;
@@ -44,7 +44,9 @@ void memReadData(
 		// It may seems strange, but it's memReadData responsibility, to let the 
 		// PE knows that it has to load a new set of weights.
 
-		char out_channel_iter = weight_m / LANE_NUM + 1;
+		// TODO: We assume for now that weight_m is divisble by LANE_NUM
+		char out_channel_iter = weight_m / LANE_NUM;
+		
 		for (char j = 0; j < out_channel_iter; j++) {
 
 			char update_weight_signal = 0x01;
@@ -62,15 +64,15 @@ void memReadData(
 
 				// These indexes determines where are we in the 
 				// feature map.
+				char feature_idx_x = brick_idx_x;
+				char feature_idx_y = brick_idx_y;
+				char feature_idx_z = 0;
 
+				// TODO: Here assume weight_n is divisible by VEC_SIZE
 				short num_plates = weight_h * (weight_n/VEC_SIZE);
 
 				for (short plate = 0; plate = num_plates; plate++) {
 					lane_cols data_for_convs;
-
-					char feature_idx_x = brick_idx_x;
-					char feature_idx_y = brick_idx_y;
-					char feature_idx_z = 0;
 
 					// Seems like we have to somehow tell the PE that
 					// it still does (not) need to read a new weight
@@ -92,15 +94,15 @@ void memReadData(
 					for (char w = 0; w < W_VEC; w++) {
 						short read_index = 
 							feature_idx_z * data_w * data_h +
-							feature_idx_y * data_w +
-							feature_idx_x + 
+							(feature_idx_y-conv_padding) * data_w +
+							(feature_idx_x-conv_padding) + 
 							w;
 
-						if ((feature_idx_x >= conv_padding && feature_idx_x < data_w + conv_padding)
+						if ((feature_idx_x+w >= conv_padding && feature_idx_x+w < data_w + conv_padding)
 							&&
 							(feature_idx_y >= conv_padding && feature_idx_y < data_h + conv_padding)) {
 
-							data_for_convs.cols[w] = bottom[flag][index];
+							data_for_convs.cols[w] = bottom[flag][read_index];
 						} else {
 							#pragma unroll
 							for (unsigned char vv = 0; vv < VEC_SIZE; vv++)
@@ -110,7 +112,7 @@ void memReadData(
 
 					// DAMN we read the plate. Now it's time for peanut butter jelly.
 					// Just kidding! we have to send the data to the first PE. 
-					write_channel_intel(chain_data_channels[0], data_for_convs);
+					write_channel_intel(winograd_transform_channels, data_for_convs);
 
 					// Alright data is sent, we have to move on to the next plate.
 					// That means, we have to update out feature indexes
@@ -145,7 +147,8 @@ void memReadData(
 		done = 0x01;
 		write_channel_intel(chain_done_layer_signal_channel[0], done);
 
-		// Now we are swapping to the 
+		// Now we are swapping to the alternative buffer, which contains
+		// the data for the next layer
 		flag = (~flag) & 0x01;
 	}
 
