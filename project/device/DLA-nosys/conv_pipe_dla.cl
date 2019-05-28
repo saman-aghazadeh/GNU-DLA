@@ -133,12 +133,12 @@ typedef struct {
 channel lane_cols		chain_data_channels[LANE_NUM+1];
 channel lane_cols		winograd_transform_channels;
 channel inv_rows		winograd_inv_transform_channels;
-channel weight_lane_cols		chain_weight_channels[LANE_NUM+1];
-channel bias_DPTYPE		chain_bias_channels[LANE_NUM+1];
+// channel weight_lane_cols		chain_weight_channels[LANE_NUM+1];
+// channel bias_DPTYPE		chain_bias_channels[LANE_NUM+1];
 channel channel_cols		chain_output_channels[LANE_NUM+1];
 
 channel memrd_data_configuration	memrd_data_configuration_channel;
-channel memrd_weight_configuration	memrd_weight_configuration_channel;
+// channel memrd_weight_configuration	memrd_weight_configuration_channel;
 channel memwr_configuration 		memwr_configuration_channel;
 channel instruction		chain_instruction_channels[LANE_NUM+1];
 
@@ -173,7 +173,6 @@ DPTYPE pool_max(DPTYPE a_in, DPTYPE b_in)
 
 #include "controller.cl"
 #include "mem_read_data.cl"
-#include "mem_read_weight.cl"
 #include "PE.cl"
 #include "mem_write.cl"
 #include "winograd_inv_transform.cl"

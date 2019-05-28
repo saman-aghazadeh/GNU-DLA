@@ -52,14 +52,6 @@ void controller(
 		memrd_data_config.conv_padding = conv_padding;
 		write_channel_intel(memrd_data_configuration_channel, memrd_data_config);
 
-		// This part controls the memrdweights module
-		memrd_weight_configuration memrd_weight_config;
-		memrd_weight_config.weight_m = weight_m;
-		memrd_weight_config.weight_n = weight_n;
-		memrd_weight_config.weight_h = weight_h;
-		memrd_weight_config.weight_w = weight_w;
-		write_channel_intel(memrd_weight_configuration_channel, memrd_weight_config);
-
 		// This part controls the PEs
 		instruction inst;
 		inst.conv_loop_cnt = weight_h * (weight_n / VEC_SIZE);
