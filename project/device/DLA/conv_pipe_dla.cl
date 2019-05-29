@@ -31,12 +31,13 @@
 #define USE_ROM 
 
 #include "hw_param.cl"
+#include "ihc_apint.h"
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
 // Define the precision of the data-path
-typedef char DPTYPE;
-typedef int  MACTYPE;
+typedef int8_t DPTYPE;
+typedef int16_t MACTYPE;
 
 // Vectorized data type
 typedef struct {

@@ -8,32 +8,32 @@ __kernel void PE0(
 		char config_size,
 		// Param ports
 		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
+		__global DPTYPE			*restrict biases 
 
 ) {
 
 	char id = 0;
-	char bias_index = 0;
-	int weight_index = 0;
+	//char bias_index = 0;
+	//int weight_index = 0;
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
 	// among the biggest ones.
-	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+	//__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
-	DPTYPE bias;
+	//DPTYPE bias;
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
+	//#pragma unroll 1
+        //for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
+        //        lane_cols temp_weight = weights[weight_index+i];
+        //        weight_buffer[i] = temp_weight;
+     	//}
 
-        weight_index += WEIGHT_BUF_SIZE;
+        //weight_index += WEIGHT_BUF_SIZE;
 
 	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
+	//bias = biases[bias_index];
+	//bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -108,7 +108,7 @@ __kernel void PE0(
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
 					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+						(accumulation.w_data[w]) + mac(feature.cols[w], weight_PE0[i].cols[w]);
 				}
 			}
 			/*
@@ -166,32 +166,32 @@ __kernel void PE1(
 		char config_size,
 		// Param ports
 		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
+		__global DPTYPE			*restrict biases 
 
 ) {
 
 	char id = 1;
-	char bias_index = 0;
-	int weight_index = 0;
+	//char bias_index = 0;
+	//int weight_index = 0;
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
 	// among the biggest ones.
-	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+	//__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
-	DPTYPE bias;
+	//DPTYPE bias;
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
+	//#pragma unroll 1
+        //for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
+        //        lane_cols temp_weight = weights[weight_index+i];
+        //        weight_buffer[i] = temp_weight;
+     	//}
 
-        weight_index += WEIGHT_BUF_SIZE;
+        //weight_index += WEIGHT_BUF_SIZE;
 
 	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
+	//bias = biases[bias_index];
+	//bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -266,7 +266,7 @@ __kernel void PE1(
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
 					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+						(accumulation.w_data[w]) + mac(feature.cols[w], weight_PE1[i].cols[w]);
 				}
 			}
 			/*
@@ -324,32 +324,32 @@ __kernel void PE2(
 		char config_size,
 		// Param ports
 		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
+		__global DPTYPE			*restrict biases 
 
 ) {
 
 	char id = 2;
-	char bias_index = 0;
-	int weight_index = 0;
+	//char bias_index = 0;
+	//int weight_index = 0;
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
 	// among the biggest ones.
-	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+	//__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
-	DPTYPE bias;
+	//DPTYPE bias;
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
+	//#pragma unroll 1
+        //for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
+        //        lane_cols temp_weight = weights[weight_index+i];
+        //        weight_buffer[i] = temp_weight;
+     	//}
 
-        weight_index += WEIGHT_BUF_SIZE;
+        //weight_index += WEIGHT_BUF_SIZE;
 
 	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
+	//bias = biases[bias_index];
+	//bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -424,7 +424,7 @@ __kernel void PE2(
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
 					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+						(accumulation.w_data[w]) + mac(feature.cols[w], weight_PE2[i].cols[w]);
 				}
 			}
 			/*
@@ -482,32 +482,32 @@ __kernel void PE3(
 		char config_size,
 		// Param ports
 		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
+		__global DPTYPE			*restrict biases 
 
 ) {
 
 	char id = 3;
-	char bias_index = 0;
-	int weight_index = 0;
+	//char bias_index = 0;
+	//int weight_index = 0;
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
 	// among the biggest ones.
-	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+	//__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
-	DPTYPE bias;
+	//DPTYPE bias;
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
+	//#pragma unroll 1
+        //for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
+        //        lane_cols temp_weight = weights[weight_index+i];
+        //        weight_buffer[i] = temp_weight;
+     	//}
 
-        weight_index += WEIGHT_BUF_SIZE;
+        //weight_index += WEIGHT_BUF_SIZE;
 
 	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
+	//bias = biases[bias_index];
+	//bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -582,7 +582,7 @@ __kernel void PE3(
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
 					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+						(accumulation.w_data[w]) + mac(feature.cols[w], weight_PE3[i].cols[w]);
 				}
 			}
 			/*
@@ -640,32 +640,32 @@ __kernel void PE4(
 		char config_size,
 		// Param ports
 		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
+		__global DPTYPE			*restrict biases 
 
 ) {
 
 	char id = 4;
-	char bias_index = 0;
-	int weight_index = 0;
+	//char bias_index = 0;
+	//int weight_index = 0;
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
 	// among the biggest ones.
-	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+	//__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
-	DPTYPE bias;
+	//DPTYPE bias;
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
+	//#pragma unroll 1
+        //for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
+        //        lane_cols temp_weight = weights[weight_index+i];
+        //        weight_buffer[i] = temp_weight;
+     	//}
 
-        weight_index += WEIGHT_BUF_SIZE;
+        //weight_index += WEIGHT_BUF_SIZE;
 
 	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
+	//bias = biases[bias_index];
+	//bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -740,7 +740,7 @@ __kernel void PE4(
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
 					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+						(accumulation.w_data[w]) + mac(feature.cols[w], weight_PE4[i].cols[w]);
 				}
 			}
 			/*
@@ -798,32 +798,32 @@ __kernel void PE5(
 		char config_size,
 		// Param ports
 		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
+		__global DPTYPE			*restrict biases 
 
 ) {
 
 	char id = 5;
-	char bias_index = 0;
-	int weight_index = 0;
+	//char bias_index = 0;
+	//int weight_index = 0;
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
 	// among the biggest ones.
-	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+	//__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
-	DPTYPE bias;
+	//DPTYPE bias;
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
+	//#pragma unroll 1
+        //for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
+        //        lane_cols temp_weight = weights[weight_index+i];
+        //        weight_buffer[i] = temp_weight;
+     	//}
 
-        weight_index += WEIGHT_BUF_SIZE;
+        //weight_index += WEIGHT_BUF_SIZE;
 
 	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
+	//bias = biases[bias_index];
+	//bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -898,7 +898,7 @@ __kernel void PE5(
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
 					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+						(accumulation.w_data[w]) + mac(feature.cols[w], weight_PE5[i].cols[w]);
 				}
 			}
 			/*
@@ -956,32 +956,32 @@ __kernel void PE6(
 		char config_size,
 		// Param ports
 		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
+		__global DPTYPE			*restrict biases 
 
 ) {
 
 	char id = 6;
-	char bias_index = 0;
-	int weight_index = 0;
+	//char bias_index = 0;
+	//int weight_index = 0;
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
 	// among the biggest ones.
-	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+	//__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
-	DPTYPE bias;
+	//DPTYPE bias;
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
+	//#pragma unroll 1
+        //for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
+        //        lane_cols temp_weight = weights[weight_index+i];
+        //        weight_buffer[i] = temp_weight;
+     	//}
 
-        weight_index += WEIGHT_BUF_SIZE;
+        //weight_index += WEIGHT_BUF_SIZE;
 
 	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
+	//bias = biases[bias_index];
+	//bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -1056,7 +1056,7 @@ __kernel void PE6(
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
 					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+						(accumulation.w_data[w]) + mac(feature.cols[w], weight_PE6[i].cols[w]);
 				}
 			}
 			/*
@@ -1114,32 +1114,32 @@ __kernel void PE7(
 		char config_size,
 		// Param ports
 		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
+		__global DPTYPE			*restrict biases 
 
 ) {
 
 	char id = 7;
-	char bias_index = 0;
-	int weight_index = 0;
+	//char bias_index = 0;
+	//int weight_index = 0;
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
 	// among the biggest ones.
-	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+	//__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
-	DPTYPE bias;
+	//DPTYPE bias;
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
+	//#pragma unroll 1
+        //for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
+        //        lane_cols temp_weight = weights[weight_index+i];
+        //        weight_buffer[i] = temp_weight;
+     	//}
 
-        weight_index += WEIGHT_BUF_SIZE;
+        //weight_index += WEIGHT_BUF_SIZE;
 
 	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
+	//bias = biases[bias_index];
+	//bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -1214,7 +1214,7 @@ __kernel void PE7(
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
 					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+						(accumulation.w_data[w]) + mac(feature.cols[w], weight_PE7[i].cols[w]);
 				}
 			}
 			/*
@@ -1272,32 +1272,32 @@ __kernel void PE8(
 		char config_size,
 		// Param ports
 		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
+		__global DPTYPE			*restrict biases 
 
 ) {
 
 	char id = 8;
-	char bias_index = 0;
-	int weight_index = 0;
+	//char bias_index = 0;
+	//int weight_index = 0;
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
 	// among the biggest ones.
-	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+	//__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
-	DPTYPE bias;
+	//DPTYPE bias;
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
+	//#pragma unroll 1
+        //for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
+        //        lane_cols temp_weight = weights[weight_index+i];
+        //        weight_buffer[i] = temp_weight;
+     	//}
 
-        weight_index += WEIGHT_BUF_SIZE;
+        //weight_index += WEIGHT_BUF_SIZE;
 
 	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
+	//bias = biases[bias_index];
+	//bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -1372,7 +1372,7 @@ __kernel void PE8(
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
 					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+						(accumulation.w_data[w]) + mac(feature.cols[w], weight_PE8[i].cols[w]);
 				}
 			}
 			/*
@@ -1430,32 +1430,32 @@ __kernel void PE9(
 		char config_size,
 		// Param ports
 		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
+		__global DPTYPE			*restrict biases 
 
 ) {
 
 	char id = 9;
-	char bias_index = 0;
-	int weight_index = 0;
+	//char bias_index = 0;
+	//int weight_index = 0;
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
 	// among the biggest ones.
-	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+	//__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
-	DPTYPE bias;
+	//DPTYPE bias;
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
+	//#pragma unroll 1
+        //for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
+        //        lane_cols temp_weight = weights[weight_index+i];
+        //        weight_buffer[i] = temp_weight;
+     	//}
 
-        weight_index += WEIGHT_BUF_SIZE;
+        //weight_index += WEIGHT_BUF_SIZE;
 
 	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
+	//bias = biases[bias_index];
+	//bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -1530,7 +1530,7 @@ __kernel void PE9(
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
 					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+						(accumulation.w_data[w]) + mac(feature.cols[w], weight_PE9[i].cols[w]);
 				}
 			}
 			/*
@@ -1588,32 +1588,32 @@ __kernel void PE10(
 		char config_size,
 		// Param ports
 		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
+		__global DPTYPE			*restrict biases 
 
 ) {
 
 	char id = 10;
-	char bias_index = 0;
-	int weight_index = 0;
+	//char bias_index = 0;
+	//int weight_index = 0;
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
 	// among the biggest ones.
-	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+	//__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
-	DPTYPE bias;
+	//DPTYPE bias;
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
+	//#pragma unroll 1
+        //for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
+        //        lane_cols temp_weight = weights[weight_index+i];
+        //        weight_buffer[i] = temp_weight;
+     	//}
 
-        weight_index += WEIGHT_BUF_SIZE;
+        //weight_index += WEIGHT_BUF_SIZE;
 
 	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
+	//bias = biases[bias_index];
+	//bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -1688,7 +1688,7 @@ __kernel void PE10(
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
 					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+						(accumulation.w_data[w]) + mac(feature.cols[w], weight_PE10[i].cols[w]);
 				}
 			}
 			/*
@@ -1746,32 +1746,32 @@ __kernel void PE11(
 		char config_size,
 		// Param ports
 		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
+		__global DPTYPE			*restrict biases 
 
 ) {
 
 	char id = 11;
-	char bias_index = 0;
-	int weight_index = 0;
+	//char bias_index = 0;
+	//int weight_index = 0;
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
 	// among the biggest ones.
-	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+	//__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
-	DPTYPE bias;
+	//DPTYPE bias;
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
+	//#pragma unroll 1
+        //for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
+        //        lane_cols temp_weight = weights[weight_index+i];
+        //        weight_buffer[i] = temp_weight;
+     	//}
 
-        weight_index += WEIGHT_BUF_SIZE;
+        //weight_index += WEIGHT_BUF_SIZE;
 
 	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
+	//bias = biases[bias_index];
+	//bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -1846,7 +1846,7 @@ __kernel void PE11(
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
 					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+						(accumulation.w_data[w]) + mac(feature.cols[w], weight_PE11[i].cols[w]);
 				}
 			}
 			/*
@@ -1904,32 +1904,32 @@ __kernel void PE12(
 		char config_size,
 		// Param ports
 		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
+		__global DPTYPE			*restrict biases 
 
 ) {
 
 	char id = 12;
-	char bias_index = 0;
-	int weight_index = 0;
+	//char bias_index = 0;
+	//int weight_index = 0;
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
 	// among the biggest ones.
-	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+	//__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
-	DPTYPE bias;
+	//DPTYPE bias;
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
+	//#pragma unroll 1
+        //for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
+        //        lane_cols temp_weight = weights[weight_index+i];
+        //        weight_buffer[i] = temp_weight;
+     	//}
 
-        weight_index += WEIGHT_BUF_SIZE;
+        //weight_index += WEIGHT_BUF_SIZE;
 
 	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
+	//bias = biases[bias_index];
+	//bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -2004,7 +2004,7 @@ __kernel void PE12(
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
 					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+						(accumulation.w_data[w]) + mac(feature.cols[w], weight_PE12[i].cols[w]);
 				}
 			}
 			/*
@@ -2062,32 +2062,32 @@ __kernel void PE13(
 		char config_size,
 		// Param ports
 		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
+		__global DPTYPE			*restrict biases 
 
 ) {
 
 	char id = 13;
-	char bias_index = 0;
-	int weight_index = 0;
+	//char bias_index = 0;
+	//int weight_index = 0;
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
 	// among the biggest ones.
-	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+	//__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
-	DPTYPE bias;
+	//DPTYPE bias;
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
+	//#pragma unroll 1
+        //for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
+        //        lane_cols temp_weight = weights[weight_index+i];
+        //        weight_buffer[i] = temp_weight;
+     	//}
 
-        weight_index += WEIGHT_BUF_SIZE;
+        //weight_index += WEIGHT_BUF_SIZE;
 
 	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
+	//bias = biases[bias_index];
+	//bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -2162,7 +2162,7 @@ __kernel void PE13(
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
 					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+						(accumulation.w_data[w]) + mac(feature.cols[w], weight_PE13[i].cols[w]);
 				}
 			}
 			/*
@@ -2220,32 +2220,32 @@ __kernel void PE14(
 		char config_size,
 		// Param ports
 		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
+		__global DPTYPE			*restrict biases 
 
 ) {
 
 	char id = 14;
-	char bias_index = 0;
-	int weight_index = 0;
+	//char bias_index = 0;
+	//int weight_index = 0;
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
 	// among the biggest ones.
-	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+	//__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
-	DPTYPE bias;
+	//DPTYPE bias;
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
+	//#pragma unroll 1
+        //for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
+        //        lane_cols temp_weight = weights[weight_index+i];
+        //        weight_buffer[i] = temp_weight;
+     	//}
 
-        weight_index += WEIGHT_BUF_SIZE;
+        //weight_index += WEIGHT_BUF_SIZE;
 
 	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
+	//bias = biases[bias_index];
+	//bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -2320,7 +2320,7 @@ __kernel void PE14(
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
 					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+						(accumulation.w_data[w]) + mac(feature.cols[w], weight_PE14[i].cols[w]);
 				}
 			}
 			/*
@@ -2378,32 +2378,32 @@ __kernel void PE15(
 		char config_size,
 		// Param ports
 		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
+		__global DPTYPE			*restrict biases 
 
 ) {
 
 	char id = 15;
-	char bias_index = 0;
-	int weight_index = 0;
+	//char bias_index = 0;
+	//int weight_index = 0;
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
 	// among the biggest ones.
-	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
+	//__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
-	DPTYPE bias;
+	//DPTYPE bias;
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
+	//#pragma unroll 1
+        //for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
+        //        lane_cols temp_weight = weights[weight_index+i];
+        //        weight_buffer[i] = temp_weight;
+     	//}
 
-        weight_index += WEIGHT_BUF_SIZE;
+        //weight_index += WEIGHT_BUF_SIZE;
 
 	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
+	//bias = biases[bias_index];
+	//bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -2478,7 +2478,7 @@ __kernel void PE15(
 				#pragma unroll
 				for (char w = 0; w < W_VEC; w++) {
 					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+						(accumulation.w_data[w]) + mac(feature.cols[w], weight_PE15[i].cols[w]);
 				}
 			}
 			/*

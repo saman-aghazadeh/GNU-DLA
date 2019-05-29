@@ -4,7 +4,7 @@
 __attribute__((max_global_work_dim(0)))
 __attribute__((autorun))
 __attribute__((num_compute_units(LANE_NUM)))
-__kernel void PE(__global DPTYPE *restrict input) {
+__kernel void PE() {
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 

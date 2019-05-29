@@ -172,6 +172,7 @@ DPTYPE pool_max(DPTYPE a_in, DPTYPE b_in)
 
 }
 
+#include "const_cache.cl"
 #include "controller.cl"
 #include "mem_read_data.cl"
 #include "PE.cl"
