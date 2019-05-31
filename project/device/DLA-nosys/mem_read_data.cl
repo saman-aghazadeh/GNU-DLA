@@ -14,9 +14,6 @@ void memReadData(
 	// This flag specifies which global data part we should
 	// read the data from.
 	char flag = 0x00;
-	//lane_data* bottoms[2];
-	//bottoms[0] = bottom0;
-	//bottoms[1] = bottom1;
 
 	for (char i = 0; i < config_size; i++) {
 
@@ -34,13 +31,6 @@ void memReadData(
 		int data_w_with_padding = data_w + 2 * conv_padding;
 		int data_h_with_padding = data_h + 2 * conv_padding;
 
-		// Now we have to read W_VEC * VEC_SIZE elements, that is going to be used 
-		// for each iteration of the convolution. We first read through the rows,
-		// and the we go through the channels.
-		// You have to consider that for each output, what layers are required.
-		
-		int done = 0x00;
-
 		// It may seems strange, but it's memReadData responsibility, to let the 
 		// PE knows that it has to load a new set of weights.
 
@@ -48,8 +38,6 @@ void memReadData(
 		char out_channel_iter = weight_m / LANE_NUM;
 		
 		for (char j = 0; j < out_channel_iter; j++) {
-
-			int update_weight_signal = 0x01;
 
 			// We have to read the data brick by brick.
 			// Every brick is of size 
@@ -73,18 +61,6 @@ void memReadData(
 
 				for (short plate = 0; plate < num_plates; plate++) {
 					lane_cols data_for_convs;
-
-					// Seems like we have to somehow tell the PE that
-					// it still does (not) need to read a new weight
-					// Here we inform it.
-					write_channel_intel(update_weights_signal_channel[0], update_weight_signal);
-					if (update_weight_signal == 0x01) {
-						update_weight_signal = 0x00;
-					}
-
-					// We also have to inform the PEs that we are still not done
-					// with this specific layer
-					write_channel_intel(chain_done_layer_signal_channel[0], done);
 
 					// We have to read a plate of data, which is of 
 					// size W_VEC * VEC_SIZE
@@ -144,9 +120,6 @@ void memReadData(
 				}
 			}
 		}
-
-		done = 0x01;
-		write_channel_intel(chain_done_layer_signal_channel[0], done);
 
 		// Now we are swapping to the alternative buffer, which contains
 		// the data for the next layer

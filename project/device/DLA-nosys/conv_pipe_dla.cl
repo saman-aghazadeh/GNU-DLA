@@ -131,20 +131,17 @@ typedef struct {
 } memwr_configuration;
 
 
-channel lane_cols		chain_data_channels[LANE_NUM+1];
-channel lane_cols		winograd_transform_channels;
-channel inv_rows		winograd_inv_transform_channels;
-channel lane_cols		weight_channels[LANE_NUM+1];
-channel DPTYPE			bias_channels[LANE_NUM+1];
-channel channel_cols		chain_output_channels[LANE_NUM+1];
+channel lane_cols					chain_data_channels[LANE_NUM+1];
+channel lane_cols					winograd_transform_channels;
+channel inv_rows					winograd_inv_transform_channels;
+channel lane_cols					weight_channels[LANE_NUM+1];
+channel DPTYPE						bias_channels[LANE_NUM+1];
+channel channel_cols				chain_output_channels[LANE_NUM+1];
 
 channel memrd_data_configuration	memrd_data_configuration_channel;
 channel memrd_weight_configuration	memrd_weight_configuration_channel;
 channel memwr_configuration 		memwr_configuration_channel;
-channel instruction		chain_instruction_channels[LANE_NUM+1];
-
-channel int 			update_weights_signal_channel[LANE_NUM+1];
-channel int            chain_done_layer_signal_channel[LANE_NUM+1];
+channel instruction					chain_instruction_channels[LANE_NUM+1];
 
 // parallel MAC units including (VEC_SIZE-1) multipliers
 MACTYPE mac(lane_data input, lane_data weights)

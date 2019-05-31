@@ -28,7 +28,7 @@ void memWrite(
 		int write_index = 0;
 
 		// We assume conv_z is divisble by LANE_NUM
-		uint num_plates = conv_y * (conv_z/LANE_NUM) * ((conv_x-1)/(W_VEC-weight_w+1)+1);
+		uint num_plates = conv_y * (conv_z/LANE_NUM) * ((conv_y-1)/W_INV_VEC + 1);
 
 		for (uint plate = 0; plate < num_plates; plate++) {
 			inv_rows inv;

@@ -39,6 +39,7 @@ void controller(
 		int pool_stride = config->pool_stride;
 		int lrn_on = config->lrn_on;
 		int memwr_dst = config->memwr_dst;
+		int num_bricks = config->num_bricks;
 
 		// This part controls the memrd module
 		memrd_data_configuration memrd_data_config;
@@ -59,6 +60,8 @@ void controller(
 		inst.frac_dout = frac_dout;
 		inst.frac_din = frac_din;
 		inst.num_weight_plates = weight_h * (weight_n/VEC_SIZE);
+		inst.num_ch_per_pe = weight_m / LANE_NUM;
+		inst.num_bricks = num_bricks;
 		write_channel_intel(chain_instruction_channels[0], inst);
 
 		// This part controls the memwr module

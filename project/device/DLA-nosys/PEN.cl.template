@@ -35,105 +35,99 @@ __kernel void PE$peid$() {
 		char frac_w = inst.frac_w;
 		char frac_din = inst.frac_din;
 		char frac_dout = inst.frac_dout;
+		char out_ch_per_pe = inst.out_ch_per_pe;
+		char num_bricks = inst.num_bricks;
 
 		// Number of weight vectors that we are going to read
 		// it again should be equal to weight_height * weights_dim3/VEC_SIZE.
 		// 
 		char num_weight_plates = inst.num_weight_plates;
 
+		char out_ch = 0;
+
 		// All the work that should be done in this layer
-		while (true) {
-
-			int done_layer_signal = read_channel_intel(chain_done_layer_signal_channel[$peid$]);
-			write_channel_intel(chain_done_layer_signal_channel[$peid+1$], done_layer_signal);
-			if (done_layer_signal == 0x01) break;
-
-
-			int update_weights_signal = read_channel_intel(update_weights_signal_channel[$peid$]);
-			write_channel_intel(update_weights_signal_channel[$peid+1$], update_weights_signal);
+		while (out_ch < out_ch_per_pe) {
 
 			// We have to load the weights into the weight_buffer. weights
 			// are loaded through the chain_weight
-			if (update_weights_signal == 0x01) {
-				// Case 1:
-				// bias_DPTYPE bias_buffer= read_channel_intel(chain_bias_channels[id]);
-				// write_channel_intel(chain_bias_channels[id+1], bias_buffer);	
-				// bias = bias_buffer.bias[id];
+			// Case 1:
+			// bias_DPTYPE bias_buffer= read_channel_intel(chain_bias_channels[id]);
+			// write_channel_intel(chain_bias_channels[id+1], bias_buffer);	
+			// bias = bias_buffer.bias[id];
 					
-				// Case 2:
-				bias = read_channel_intel(bias_channels[$peid$]);
-				for (char i = 0; i < num_weight_plates; i++) {
-					// Case 1:
-					// weight_lane_cols temp_weight = read_channel_intel(chain_weight_channels[id]);
-					// write_channel_intel(chain_weight_channels[id+1], temp_weight);
-					// weight_buffer[i] = temp_weight.weight[id];
-					weight_buffer[i] = read_channel_intel(weight_channels[$peid$]);
-				}
-			}
+			// Case 2:
+			bias = read_channel_intel(bias_channels[$peid$]);
+			for (char i = 0; i < num_weight_plates; i++) {
+				// Case 1:
+				// weight_lane_cols temp_weight = read_channel_intel(chain_weight_channels[id]);
+				// write_channel_intel(chain_weight_channels[id+1], temp_weight);
+				// weight_buffer[i] = temp_weight.weight[id];
+				weight_buffer[i] = read_channel_intel(weight_channels[$peid$]);
+			}			
 
 			
-			w_data accumulation;
-			//__local w_data acc_sign_exten;
-			//__local w_data acc_with_rnd_bit;
-			//__local w_data acc_sum_bias;
+			for (char brick = 0; brick < num_bricks; brick++) {
+				w_data accumulation;
+				//__local w_data acc_sign_exten;
+				//__local w_data acc_with_rnd_bit;
+				//__local w_data acc_sum_bias;
 
-			// Now it's time to read the inputs and do the calculation
-			for (uint i = 0; i < conv_loop_cnt; i++) {
-				// Reading data incoming feature data from the incoming input
-				lane_cols feature = read_channel_intel(chain_data_channels[$peid$]);
+				// Now it's time to read the inputs and do the calculation
+				for (uint i = 0; i < conv_loop_cnt; i++) {
+					// Reading data incoming feature data from the incoming input
+					lane_cols feature = read_channel_intel(chain_data_channels[$peid$]);
 
-				// Bypassing the data to next PE
-				write_channel_intel(chain_data_channels[$peid+1$], feature);
+					// Bypassing the data to next PE
+					write_channel_intel(chain_data_channels[$peid+1$], feature);
 
-				#pragma unroll
-				for (char w = 0; w < W_VEC; w++) {
-					accumulation.w_data[w] = 
-						(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+					#pragma unroll
+					for (char w = 0; w < W_VEC; w++) {
+						accumulation.w_data[w] = 
+							(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
+					}
 				}
-			}
-			/*
-
-			// Not sure why we have to do all these
-			#pragma unroll
-			for (unsigned i = 0; i < W_VEC; i++) {
-				if (accumulation.w_data[i] > 0)
-					acc_sign_exten.w_data[i] = 0x00;
-				else
-					acc_sign_exten.w_data[i] = ~(0xFFFFFFFF >> (frac_w+frac_din-frac_dout-1));
-
-				acc_with_rnd_bit.w_data[i] = (acc_sign_exten.w_data[i] | (accumulation.w_data[i] >> (frac_w+frac_din-frac_dout-1))) + 0x01;
-
-				// This part should be fixed
-				if (acc_with_rnd_bit.w_data[i] >= 256)
-					acc_sum_bias.w_data[i] = MASK9B & 0xFF;
-				else if (acc_with_rnd_bit.w_data[i] < -256)
-					acc_sum_bias.w_data[i] = MASK9B & 0x100;
-				else
-					acc_sum_bias.w_data[i] = (MASK9B & acc_with_rnd_bit.w_data[i]) + (bias>>(frac_w+frac_din-frac_dout-1)) + 0x01;
-
-				accumulation.w_data[i] = MASK8B & (acc_sum_bias.w_data[i] >> 0x01);
-
 				
+				/*
+				// Not sure why we have to do all these
+				#pragma unroll
+				for (unsigned i = 0; i < W_VEC; i++) {
+					if (accumulation.w_data[i] > 0)
+						acc_sign_exten.w_data[i] = 0x00;
+					else
+						acc_sign_exten.w_data[i] = ~(0xFFFFFFFF >> (frac_w+frac_din-frac_dout-1));
+
+					acc_with_rnd_bit.w_data[i] = (acc_sign_exten.w_data[i] | (accumulation.w_data[i] >> (frac_w+frac_din-frac_dout-1))) + 0x01;
+
+					// This part should be fixed
+					if (acc_with_rnd_bit.w_data[i] >= 256)
+						acc_sum_bias.w_data[i] = MASK9B & 0xFF;
+					else if (acc_with_rnd_bit.w_data[i] < -256)
+						acc_sum_bias.w_data[i] = MASK9B & 0x100;
+					else
+						acc_sum_bias.w_data[i] = (MASK9B & acc_with_rnd_bit.w_data[i]) + (bias>>(frac_w+frac_din-frac_dout-1)) + 0x01;
+
+					accumulation.w_data[i] = MASK8B & (acc_sum_bias.w_data[i] >> 0x01);
+
+					
+				}
+				*/
+
+				// After an array of output is generated, we will bypass that output to the next layer.
+				// It actually combines it's own output with the previous layer output, and then pass 
+				// it on
+				channel_cols$peid-1$ fromPrev;
+				channel_cols$peid$ toNext;
+				fromPrev = read_channel_intel(chain_output_channels$peid-1$);
+				#pragma unroll
+				for (int col = 0; col < $peid$; col++) {
+					toNext.cols[col] = fromPrev.cols[col];
+				}
+				toNext.cols[$peid$] = accumulation;
+				write_channel_intel(chain_output_channels$peid$, toNext);
 			}
-			*/
-			// After an array of output is generated, we will bypass that output to the next layer.
-			// It actually combines it's own output with the previous layer output, and then pass 
-			// it on
-			//if (id == 0) {
-			//channel_cols toNext;
-			//toNext.cols[0] = accumulation;
-			//write_channel_intel(chain_output_channels$peid$, toNext);
-			//} else {
-			channel_cols$peid-1$ fromPrev;
-			channel_cols$peid$ toNext;
-			fromPrev = read_channel_intel(chain_output_channels$peid-1$);
-			#pragma unroll
-			for (int col = 0; col < $peid$; col++) {
-				toNext.cols[col] = fromPrev.cols[col];
-			}
-			toNext.cols[$peid$] = accumulation;
-			write_channel_intel(chain_output_channels$peid$, toNext);
-			//}
+
+			out_ch++;
+			
 		}
 
 	}
