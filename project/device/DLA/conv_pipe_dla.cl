@@ -37,7 +37,7 @@
 
 // Define the precision of the data-path
 typedef int8_t DPTYPE;
-typedef int16_t MACTYPE;
+typedef int8_t MACTYPE;
 
 // Vectorized data type
 typedef struct {
@@ -134,8 +134,14 @@ typedef struct {
 channel lane_cols		chain_data_channels[LANE_NUM+1];
 channel lane_cols		winograd_transform_channels;
 channel inv_rows		winograd_inv_transform_channels;
-channel weight_lane_cols		chain_weight_channels[LANE_NUM+1];
-channel bias_DPTYPE		chain_bias_channels[LANE_NUM+1];
+// Case 1:
+// channel weight_lane_cols		chain_weight_channels[LANE_NUM+1];
+// Case 2:
+channel lane_cols		weight_channels[LANE_NUM];
+// Case 1:
+// channel bias_DPTYPE		chain_bias_channels[LANE_NUM+1];
+// Case 2:
+channel DPTYPE			bias_channels[LANE_NUM];
 channel channel_cols		chain_output_channels[LANE_NUM+1];
 
 channel memrd_data_configuration	memrd_data_configuration_channel;
@@ -152,8 +158,8 @@ MACTYPE mac(lane_data input, lane_data weights)
 	MACTYPE output = MASK_MULT & CZERO;		
 
 	#pragma unroll	
-	for (int i = 0; i < VEC_SIZE; i++) {
-		output += (input.data[i] * weights.data[i]);
+	for (int i = 0; i < VEC_SIZE/2; i++) {
+		output += ((input.data[i] * weights.data[i]) + (input.data[i+VEC_SIZE/2] * weights.data[i+VEC_SIZE/2]));
 	}
 
 	return output;

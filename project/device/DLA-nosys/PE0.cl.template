@@ -1,20 +1,9 @@
 // Let's kill Intel DLA. If you don't share your code with me, I'll write it from
 // the scratch.
 
-__kernel
 __attribute__((max_global_work_dim(0)))
-__kernel void PE$peid$( 
-		// Number of layers involved
-		char config_size,
-		// Param ports
-		__global lane_cols		*restrict weights,
-		__global volatile DPTYPE			*restrict biases 
-
-) {
-
-	char id = $peid$;
-	char bias_index = 0;
-	int weight_index = 0;
+__attribute__((autorun))
+__kernel void PE$peid$() {
 
 	// We assume the size of the WEIGHT_BUF_SIZE should be at least 
 	// weight_height * weight_dim3 / VEC_SIZE, which we should pick 
@@ -22,18 +11,8 @@ __kernel void PE$peid$(
 	__local lane_cols weight_buffer[WEIGHT_BUF_SIZE];
 
 	DPTYPE bias;
+	// int id = get_compute_id(0);
 
-	#pragma unroll 1
-        for (char i = 0; i < WEIGHT_BUF_SIZE; i++) {
-                lane_cols temp_weight = weights[weight_index+i];
-                weight_buffer[i] = temp_weight;
-     	}
-
-        weight_index += WEIGHT_BUF_SIZE;
-
-	// Reading the bias and then 
-	bias = biases[bias_index];
-	bias_index += 1;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -74,23 +53,24 @@ __kernel void PE$peid$(
 			write_channel_intel(update_weights_signal_channel[$peid+1$], update_weights_signal);
 
 			// We have to load the weights into the weight_buffer. weights
-			// are loaded directly from the global memory. 
-			// Hail mother mary, thou shall not fail us.
-			// Thou shall not consume much MLABs.
-			// Thou shall not consume much ALUs.
-			// Thou shall not consume much RAMs.
-			// Thou shall not perform poor.
-			// Thou shall not act like a jerk.
-			// Prais lord. Hallelujah!!!!!
-			/*
+			// are loaded through the chain_weight
 			if (update_weights_signal == 0x01) {
-
-				// Reading the bias and then 
-				bias = biases[bias_index];
-				bias_index += 1;
-
+				// Case 1:
+				// bias_DPTYPE bias_buffer= read_channel_intel(chain_bias_channels[id]);
+				// write_channel_intel(chain_bias_channels[id+1], bias_buffer);	
+				// bias = bias_buffer.bias[id];
+					
+				// Case 2:
+				bias = read_channel_intel(bias_channels[$peid$]);
+				for (char i = 0; i < num_weight_plates; i++) {
+					// Case 1:
+					// weight_lane_cols temp_weight = read_channel_intel(chain_weight_channels[id]);
+					// write_channel_intel(chain_weight_channels[id+1], temp_weight);
+					// weight_buffer[i] = temp_weight.weight[id];
+					weight_buffer[i] = read_channel_intel(weight_channels[$peid$]);
+				}
 			}
-			*/
+
 			
 			w_data accumulation;
 			//__local w_data acc_sign_exten;
@@ -139,16 +119,16 @@ __kernel void PE$peid$(
 			// After an array of output is generated, we will bypass that output to the next layer.
 			// It actually combines it's own output with the previous layer output, and then pass 
 			// it on
-			if (id == 0) {
-				channel_cols toNext;
-				toNext.cols[0] = accumulation;
-				write_channel_intel(chain_output_channels[$peid+1$], toNext);
-			} else {
-				channel_cols fromPrevToNext;
-				fromPrevToNext = read_channel_intel(chain_output_channels[$peid$]);
-				fromPrevToNext.cols[id] = accumulation;
-				write_channel_intel(chain_output_channels[$peid+1$], fromPrevToNext);
-			}
+			//if (id == 0) {
+			channel_cols0 toNext;
+			toNext.cols[0] = accumulation;
+			write_channel_intel(chain_output_channels$peid$, toNext);
+			//} else {
+			//	channel_cols fromPrevToNext;
+			//	fromPrevToNext = read_channel_intel(chain_output_channels[id]);
+			//	fromPrevToNext.cols[id] = accumulation;
+			//	write_channel_intel(chain_output_channels[id+1], fromPrevToNext);
+			//}
 		}
 
 	}

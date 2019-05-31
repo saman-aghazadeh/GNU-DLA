@@ -12,14 +12,16 @@ void consumer() {
 		int done;
 		lane_cols feature;
 		instruction inst;
-		bias_DPTYPE bias;
-		weight_lane_cols weight;
+		// Case 1:
+		// bias_DPTYPE bias;
+		// weight_lane_cols weight;
 		update_weights = read_channel_intel(update_weights_signal_channel[LANE_NUM]);
 		done = read_channel_intel(chain_done_layer_signal_channel[LANE_NUM]);
 		feature = read_channel_intel(chain_data_channels[LANE_NUM]);
 		inst = read_channel_intel(chain_instruction_channels[LANE_NUM]);
-		bias = read_channel_intel(chain_bias_channels[LANE_NUM]);
-		weight = read_channel_intel(chain_weight_channels[LANE_NUM]);
+		// Case 1:
+		// bias = read_channel_intel(chain_bias_channels[LANE_NUM]);
+		// weight = read_channel_intel(chain_weight_channels[LANE_NUM]);
 	}
 	
 }

@@ -4,7 +4,7 @@ void memReadWeight(
 			// Number of layers involved
 			char config_size,
 			// Params ports
-			__global weight_lane_cols	*restrict weights,
+			__global lane_cols	*restrict weights,
 			__global bias_DPTYPE	*restrict biases)
 
 {
@@ -19,7 +19,7 @@ void memReadWeight(
 		int weight_n = config.weight_n;
 		int weight_h = config.weight_h;
 		int weight_w = config.weight_w;
-		ushort num_plates = weight_h * (weight_n/VEC_SIZE);
+		ushort num_plates = weight_h * (weight_n/VEC_SIZE) * LANE_NUM;
 
 		uint offset = 0;
 
@@ -30,20 +30,38 @@ void memReadWeight(
 			// respective PE
 			bias_buffer = biases[i];
 
-			// First send out the biases 
-			write_channel_intel(chain_bias_channels[0], bias_buffer);
+			// First send out the biases
+			// Case 1: 
+			// write_channel_intel(chain_bias_channels[0], bias_buffer);
+			// Case 2:
+			for (int pe = 0; pe < LANE_NUM; pe++) {
+				write_channel_intel(bias_channels[pe], bias_buffer.bias[pe]);
+			}
 
 			// Now we read the weights and send them plate by plate to the 
 			// appropriate PE
 			for (ushort plate = 0; plate < num_plates; plate++) {
-				weight_lane_cols cur_plate = weights[layer_offset + offset];
-				offset += 1;
-				write_channel_intel(chain_weight_channels[0], cur_plate);
+				for (ushort pe = 0; pe < LANE_NUM; pe++) {
+					lane_cols cur_plate = weights[offset];
+					offset += 1;
+					write_channel_intel(weight_channels[pe], cur_plate);
+				}
+
+				// Case 1: send the whole thing to the first PE,
+				// and it will be bypassed to the second one and
+				// the next PEs as well.
+				// write_channel_intel(chain_weight_channels[0], cur_plate);
+			
+				// Case 2: There are dedicated channels to each PE,
+				// so we will send the data to each of them, one by one.
+				// for (int pe = 0; pe < LANE_NUM; pe++) {
+				//	write_channel_intel(weight_channels[pe], cur_plate.weight[pe]);
+				// }	
 			}
 
 		}
 
-		layer_offset += (weight_h * weight_n * weight_m) / VEC_SIZE;
+		//layer_offset += (weight_h * weight_n * weight_m) / VEC_SIZE;
 	}
 
 }

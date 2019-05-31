@@ -38,12 +38,12 @@
 // Macro architecture parameters
 // General
 // #define VEC_SIZE            4              // larger than 4, i.e., 4, 8, 16, ...
-// #define LANE_NUM            16             // larger than 1, for alexnet: 2, 3, 4, 8, 12, 15, 16, 22, 28, 32, 34, 48, 50, 51, 52, 64, ...
+// #define LANE_NUM            32             // larger than 1, for alexnet: 2, 3, 4, 8, 12, 15, 16, 22, 28, 32, 34, 48, 50, 51, 52, 64, ...
 
 #define VEC_SIZE		8
-#define LANE_NUM		16
-#define W_VEC			6	      // This is the size of the Width data that is being piped into the PEs
-#define W_INV_VEC 		6
+#define LANE_NUM		32
+#define W_VEC			8	      // This is the size of the Width data that is being piped into the PEs
+#define W_INV_VEC 		8
 #define MEMRDWEIGHT_BANKWIDTH	128
 
 #define CHN_DEPTH           0
