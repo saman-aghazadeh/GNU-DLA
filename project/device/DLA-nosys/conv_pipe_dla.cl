@@ -90,6 +90,8 @@ typedef struct {
 	int frac_din;
 	int frac_dout;
 	int num_weight_plates;
+	int out_ch_per_pe;
+	int num_bricks;
 } instruction;
 
 // configuration of the layer
@@ -101,6 +103,7 @@ typedef struct {
 	int pool_on, pool_x, pool_y, pool_z, pool_size, pool_stride;
 	int lrn_on; // lrn on/off control
 	int memwr_dst; // 0 -> data_buf, 1 -> output_buf, 2 -> fc_1_buffer, 3 -> fc_2_buffer
+	int num_bricks;
 } configuration;
 
 // required config for the memRdData

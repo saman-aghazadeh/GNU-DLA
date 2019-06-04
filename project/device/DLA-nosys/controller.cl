@@ -15,31 +15,31 @@ void controller(
 {
 
 	for (int i = 0; i < config_size; i++) {
-		int layer_type = config->layer_type;
-		int data_w = config->data_w;
-		int data_h = config->data_h;
-		int weight_w = config->weight_w;
-		int weight_h = config->weight_h;
-		int weight_n = config->weight_n;
-		int weight_m = config->weight_m;
-		int bias_size = config->bias_size;
-		int memrd_src = config->memrd_src;
-		int conv_x = config->conv_x;
-		int conv_y = config->conv_y;
-		int conv_z = config->conv_z;
-		int conv_stride = config->conv_stride;
-		int conv_padding = config->conv_padding;
-		int conv_split = config->conv_split;
-		int conv_relu = config->conv_relu;
-		int pool_on = config->pool_on;
-		int pool_x = config->pool_x;
-		int pool_y = config->pool_y;
-		int pool_z = config->pool_z;
-		int pool_size = config->pool_size;
-		int pool_stride = config->pool_stride;
-		int lrn_on = config->lrn_on;
-		int memwr_dst = config->memwr_dst;
-		int num_bricks = config->num_bricks;
+		int layer_type = config[i].layer_type;
+		int data_w = config[i].data_w;
+		int data_h = config[i].data_h;
+		int weight_w = config[i].weight_w;
+		int weight_h = config[i].weight_h;
+		int weight_n = config[i].weight_n;
+		int weight_m = config[i].weight_m;
+		int bias_size = config[i].bias_size;
+		int memrd_src = config[i].memrd_src;
+		int conv_x = config[i].conv_x;
+		int conv_y = config[i].conv_y;
+		int conv_z = config[i].conv_z;
+		int conv_stride = config[i].conv_stride;
+		int conv_padding = config[i].conv_padding;
+		int conv_split = config[i].conv_split;
+		int conv_relu = config[i].conv_relu;
+		int pool_on = config[i].pool_on;
+		int pool_x = config[i].pool_x;
+		int pool_y = config[i].pool_y;
+		int pool_z = config[i].pool_z;
+		int pool_size = config[i].pool_size;
+		int pool_stride = config[i].pool_stride;
+		int lrn_on = config[i].lrn_on;
+		int memwr_dst = config[i].memwr_dst;
+		int num_bricks = config[i].num_bricks;
 
 		// This part controls the memrd module
 		memrd_data_configuration memrd_data_config;
@@ -60,7 +60,7 @@ void controller(
 		inst.frac_dout = frac_dout;
 		inst.frac_din = frac_din;
 		inst.num_weight_plates = weight_h * (weight_n/VEC_SIZE);
-		inst.num_ch_per_pe = weight_m / LANE_NUM;
+		inst.out_ch_per_pe = weight_m / LANE_NUM;
 		inst.num_bricks = num_bricks;
 		write_channel_intel(chain_instruction_channels[0], inst);
 
