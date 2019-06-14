@@ -7,11 +7,15 @@ __attribute__((num_compute_units(1)))
 void winogradInvTransform()
 {
 
+	// printf ("[FPGA][winogradInvTransform] Started!\n");
+
 	// Inverse transformation runs forever to convert back the
 	// computed data
 	while (1) {
 
-		channel_cols input = read_channel_intel(chain_output_channels[LANE_NUM]);
+		// printf ("[FPGA][winogradInvTransform] Waiting for data\n");
+		channel_cols31 input = read_channel_intel(chain_output_channels31);
+		// printf ("[FPGA][winogradInvTransform] Dome waiting for data\n");
 
 		// inverse transform the input
 		// The size of the final output is W_VEC * LANE_NUM
@@ -27,7 +31,11 @@ void winogradInvTransform()
 			}
 		}
 
+		// printf ("[FPGA][winogradInvTransform] Writing something to the mem_write channel\n");
 		write_channel_intel(winograd_inv_transform_channels, inv);
+		// printf ("[FPGA][winogradInvTransform] Done writing something to the mem_write channel\n");
 	}
 
 }
+
+

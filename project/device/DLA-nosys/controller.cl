@@ -14,7 +14,10 @@ void controller(
 
 {
 
+	// printf ("[FPGA][Controller] Number of layers is %d\n", config_size);
+
 	for (int i = 0; i < config_size; i++) {
+
 		int layer_type = config[i].layer_type;
 		int data_w = config[i].data_w;
 		int data_h = config[i].data_h;
@@ -41,7 +44,9 @@ void controller(
 		int memwr_dst = config[i].memwr_dst;
 		int num_bricks = config[i].num_bricks;
 
-		// This part controls the memrd module
+		// printf ("[FPGA][Controller] Layer %d execution. layer_type=%d, data_w=%d, data_h=%d, weight_w=%d, weight_h=%d, weight_n=%d, weight_m=%d, bias_size=%d, memrd_src=%d, conv_x=%d, conv_y=%d, conv_z=%d, num_bricks=%d\n", i, layer_type, data_w, data_h, weight_w, weight_h, weight_n, weight_m, bias_size, memrd_src, conv_x, conv_y, conv_z, num_bricks);
+
+		// This part controls the memrd_data module
 		memrd_data_configuration memrd_data_config;
 		memrd_data_config.layer_type = layer_type;
 		memrd_data_config.data_w = data_w;
@@ -52,6 +57,14 @@ void controller(
 		memrd_data_config.weight_n = weight_n;
 		memrd_data_config.conv_padding = conv_padding;
 		write_channel_intel(memrd_data_configuration_channel, memrd_data_config);
+
+		// This part controls the memrd_weight module
+		memrd_weight_configuration memrd_weight_config;
+		memrd_weight_config.weight_m = weight_m;
+		memrd_weight_config.weight_n = weight_n;
+		memrd_weight_config.weight_h = weight_h;
+		memrd_weight_config.weight_w = weight_w;
+		write_channel_intel(memrd_weight_configuration_channel, memrd_weight_config);	
 
 		// This part controls the PEs
 		instruction inst;

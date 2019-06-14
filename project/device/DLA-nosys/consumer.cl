@@ -16,8 +16,11 @@ void consumer() {
 		// weight_lane_cols weight;
 		// update_weights = read_channel_intel(update_weights_signal_channel[LANE_NUM]);
 		// done = read_channel_intel(chain_done_layer_signal_channel[LANE_NUM]);
+		printf ("[FPGA][Consumer] Waiting for reading from the data_channel\n");
 		feature = read_channel_intel(chain_data_channels[LANE_NUM]);
+		printf ("[FPGA][Consumer] Done waiting for reading from the data_channel\n");
 		inst = read_channel_intel(chain_instruction_channels[LANE_NUM]);
+		printf ("[FPGA][Consumer] Done waiting for reading from the instruction channel\n");
 		// bias = read_channel_intel(chain_bias_channels[LANE_NUM]);
 		// weight = read_channel_intel(chain_weight_channels[LANE_NUM]);
 	}

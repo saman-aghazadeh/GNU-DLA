@@ -23,7 +23,7 @@
 #include "timer.h"
 
 // CNN network configuration file
-#include "../device/hw_param.cl"
+#include "../../device/DLA-nosys/hw_param.cl"
 #include "layer_config.h"
 
 #ifdef USE_OPENCV
@@ -73,9 +73,10 @@ const char *input_file_path = "./data/data_alex/image.dat";
 // Original problem size
 // File size is in num of DTYPE numbers
 #define IMAGE_FILE_SIZE   (224*224*3)
-#define WEIGHTS_FILE_SIZE 138455872  //fc8-1024
-#define LAYER_NUM         16
-#define CONV_NUM          13
+#define WEIGHTS_FILE_SIZE 324442112  //fc8-1024
+#define BIASES_FILE_SIZE  13440
+#define LAYER_NUM         8
+#define CONV_NUM          8
 const char *weight_file_path = "./data/data_vgg16/weights.dat";
 const char *input_file_path = "./data/data_vgg16/image.dat";
 #endif
@@ -152,6 +153,7 @@ cl_mem bias_buf;
 DTYPE *weights;
 DTYPE *biases;
 DTYPE *image;
+DTYPE *data_init;
 
 unsigned layer_config_original[LAYER_NUM][NUM_CONFIG_ITEM];
 
@@ -164,7 +166,9 @@ int main(int argc, char** argv)
 {
 	cl_int status;
 
-	float time;
+	unsigned int weight_buf_size;
+	unsigned int bias_buf_size;
+	unsigned int pic_num = 1;
 
 	if (argc != 2){
 		printf("Error: wrong commad format, usage:\n");
@@ -185,32 +189,34 @@ int main(int argc, char** argv)
 	}
 
 	// Query the available OpenCL device
-	device = getDevices(platform_id, DEVICE_TYPE, &num_devices);
+	device = *(getDevices(platform_id, DEVICE_TYPE, &num_devices));
 	printf("\nPlatform: %s\n", getPlatformName(platform_id).c_str());
 	printf("Using %d device(s)\n", num_devices);
 	for(unsigned i = 0; i < num_devices; ++i) {
-		printf("  Device %d: %s\n", i, getDeviceName(device[i]).c_str());
-		displayDeviceInfo(device[i]);
+		printf("  Device %d: %s\n", i, getDeviceName(device).c_str());
+		displayDeviceInfo(device);
 	}
 
 	// Create the context.
-	context = clCreateContext(NULL, num_devices, device, NULL, NULL, &status);
+	context = clCreateContext(NULL, num_devices, &device, NULL, NULL, &status);
 	checkError(status, "Failed to create context");
 
 	// Create Program Objects
 	char *kernel_file_name=argv[1];
 
 	// Create the program for all device. All devices execute the same kernel.
-	program = createProgramFromFile(context, (const char *) kernel_file_name, device, num_devices);
+	program = createProgramFromFile(context, (const char *) kernel_file_name, &device, num_devices);
 
 	// Prepare compute data
 	status = prepare();
-	if(status == 1){
+	if(status == 1) {
 		printf("Allocate memory for data and weights failed !!!\n");
 		return false;
 	}
 
 	// Command queue
+	
+	printf ("[INFO] Creating the command queues\n");
 	que_memRdData = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &status);
 	checkError(status, "Failed to create command queue for memReadData");
 	que_memRdWeight = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &status);
@@ -221,13 +227,15 @@ int main(int argc, char** argv)
 	checkError(status, "Failed to create command queue for memWrite");
 
 	// Kernel
+	
+	printf ("[INFO] Creating the kernels\n");
 	knl_memRdData = clCreateKernel(program, knl_name_memRdData, &status);
 	checkError(status, "Failed to create memRdData kernel");
 
 	knl_memRdWeight = clCreateKernel(program, knl_name_memRdWeight, &status);
 	checkError(status, "Failed to create memRdWeight kernel");
 
-	knl_controller = clCreateKernel(program, knl_controller, &status);
+	knl_controller = clCreateKernel(program, knl_name_controller, &status);
 	checkError(status, "Failed to create controller kernel");
 
 	knl_memWrite = clCreateKernel(program, knl_name_memWrite, &status);
@@ -243,6 +251,7 @@ int main(int argc, char** argv)
 	for (int layer = 0; layer < LAYER_NUM; layer++) {
 		weight_buf_size += (layer_config[layer][weight_m]*layer_config[layer][weight_n]*layer_config[layer][weight_h]*W_VEC);
 	}
+	printf ("[INFO] Creating the weight buffer\n");
 	weights_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, weight_buf_size * sizeof(DTYPE), NULL, &status);
 	checkError(status, "Failed to create buffer for weights in layer");
 
@@ -252,29 +261,94 @@ int main(int argc, char** argv)
 	for (int layer = 0; layer < LAYER_NUM; layer++) {
 		bias_buf_size += layer_config[layer][weight_m];
 	}
+	printf ("[INFO] Creating the bias buffer\n");
 	bias_buf = clCreateBuffer(context, CL_MEM_READ_ONLY, bias_buf_size * sizeof(DTYPE), NULL, &status);
 	checkError(status, "Failed to create buffer for bias in layer");
 
 	// Initializing all weights buffers, blocking write is used
-	status = clEnqueueWriteBuffer(que_memRdWeight, weights_buf, CL_TRUE, 0, weight_buf_size * sizeof(DTYPE), weight_conv, 0, NULL, NULL);
+	//
+
+	printf ("[INFO] weight_buf_size=%d, WEIGHTS_FILE_SIZE=%d\n", weight_buf_size, WEIGHTS_FILE_SIZE);
+
+	printf ("[INFO] Enqueueing the weight buffer to weight queue\n");
+	status = clEnqueueWriteBuffer(que_memRdWeight, weights_buf, CL_TRUE, 0, weight_buf_size * sizeof(DTYPE), weights, 0, NULL, NULL);
 	checkError(status, "Failed to transfer weight");
 
-	status = clEnqueueWriteBuffer(que_memRdWeight, bias_buf, CL_TRUE, 0, bias_buf_size * sizeof(DTYPE), bias_conv, 0, NULL, NULL);
+	printf ("[INFO] biases_buf_size=%d, BIASES_FILE_SIZE=%d\n", bias_buf_size, BIASES_FILE_SIZE);	
+
+	printf ("[INFO] Enqueueing the bias buffer to bias queue\n");
+	status = clEnqueueWriteBuffer(que_memRdWeight, bias_buf, CL_TRUE, 0, bias_buf_size * sizeof(DTYPE), biases, 0, NULL, NULL);
 	checkError(status, "Failed to transfer bias");
 
 	// First buffer
+	printf ("[INFO] Creating the bottom0 buffer\n");
 	bottom0_buf = clCreateBuffer(context, CL_MEM_READ_WRITE, IN_BUF_SIZE * sizeof(DTYPE), NULL, &status);
 	checkError(status, "Failed to create buffer for data in layer");
 
 	// Second buffer
+	printf ("[INFO] Creating the bottom1 buffer\n");
 	bottom1_buf = clCreateBuffer(context, CL_MEM_READ_WRITE, OUT_BUF_SIZE * sizeof(DTYPE), NULL, &status);
 	checkError(status, "Failed to create buffer for output");
 
-	status = clEnqueueWriteBuffer(que_memRdData, bottom0_buf, CL_TRUE, 0, IN_BUF_SIZE * sizeof(DTYPE), NULL, 0, NULL, NULL);
-	checkError(status, "Failed to transfer bottom0");
+	//printf ("[INFO] Enqueueing the bottom0 buffer\n");
+	//status = clEnqueueWriteBuffer(que_memRdData, bottom0_buf, CL_TRUE, 0, IN_BUF_SIZE * sizeof(DTYPE), NULL, 0, NULL, NULL);
+	//checkError(status, "Failed to transfer bottom0");
 
-	status = clEnqueueWriteBuffer(que_memRdData, bottom1_buf, CL_TRUE, 0, OUT_BUF_SIZE * sizeof(DTYPE), NULL, 0, NULL, NULL);
-	checkError(status, "Failed to transfer bottom1");
+	//printf ("[INFO] Enqueueing the bottom1 buffer\n");
+	//status = clEnqueueWriteBuffer(que_memRdData, bottom1_buf, CL_TRUE, 0, OUT_BUF_SIZE * sizeof(DTYPE), NULL, 0, NULL, NULL);
+	//checkError(status, "Failed to transfer bottom1");
+
+	printf ("[INFO] Creating the config buffer with size %d\n", sizeof(fpga_configuration) * LAYER_NUM);
+	config_buf = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(fpga_configuration) * LAYER_NUM, NULL, &status);
+	checkError(status, "Failed to create buffer for config");
+
+	fpga_configuration config[LAYER_NUM];
+
+	printf ("[INFO] Setting the configurations per layer\n");
+	for (int layer = 0; layer < LAYER_NUM; layer++) {
+		config[layer].layer_type = layer_config[layer][layer_type];
+		config[layer].data_w = layer_config[layer][data_w];
+		config[layer].data_h = layer_config[layer][data_h];
+		config[layer].weight_w = layer_config[layer][weight_w];
+		config[layer].weight_h = layer_config[layer][weight_h];
+		config[layer].weight_n = layer_config[layer][weight_n];
+		config[layer].weight_m = layer_config[layer][weight_m];
+		config[layer].memrd_src = layer_config[layer][memrd_src];
+		config[layer].conv_x = layer_config[layer][conv_x];
+		config[layer].conv_y = layer_config[layer][conv_y];
+		config[layer].conv_z = layer_config[layer][conv_z];
+		config[layer].conv_stride = layer_config[layer][conv_stride];
+		config[layer].conv_padding = layer_config[layer][conv_padding];
+		config[layer].conv_split = layer_config[layer][conv_split];
+		config[layer].conv_relu = layer_config[layer][conv_relu];
+		config[layer].pool_on = layer_config[layer][pool_on];
+		config[layer].pool_x = layer_config[layer][pool_x];
+		config[layer].pool_y = layer_config[layer][pool_y];
+		config[layer].pool_z = layer_config[layer][pool_z];
+		config[layer].pool_size = layer_config[layer][pool_size];
+		config[layer].conv_stride = layer_config[layer][pool_stride];
+		config[layer].lrn_on = layer_config[layer][lrn_on];
+		config[layer].memwr_dst = layer_config[layer][memwr_dst];
+
+		printf ("[INFO] layer_type: %d, data_w: %d, data_h: %d, weight_w: %d, weight_h: %d, weight_n: %d, weight_m: %d, memrd_src: %d, conv_x: %d, conv_y: %d, conv_z: %d, conv_stride: %d, conv_padding: %d, conv_split: %d, conv_relu: %d, pool_on: %d, pool_x: %d, pool_y: %d, pool_z: %d, pool_size: %d, conv_stride: %d, lrn_on: %d, memwr_dst: %d\n", layer_config[layer][layer_type], layer_config[layer][data_w], layer_config[layer][data_h], layer_config[layer][weight_w], layer_config[layer][weight_h], layer_config[layer][weight_n], layer_config[layer][weight_m], layer_config[layer][memrd_src], layer_config[layer][conv_x], layer_config[layer][conv_y], layer_config[layer][conv_z], layer_config[layer][conv_stride], layer_config[layer][conv_padding], layer_config[layer][conv_split], layer_config[layer][conv_relu], layer_config[layer][pool_on], layer_config[layer][pool_x], layer_config[layer][pool_y], layer_config[layer][pool_z], layer_config[layer][pool_size], layer_config[layer][pool_stride], layer_config[layer][lrn_on], layer_config[layer][memwr_dst]);
+		
+		int w_vec = W_VEC;
+		config[layer].num_bricks = (layer_config[layer][data_h]+2*layer_config[layer][conv_padding]-layer_config[layer][weight_h]+1)*((layer_config[layer][data_w]+2*layer_config[layer][conv_padding]-layer_config[layer][weight_w])/(W_VEC-layer_config[layer][weight_w]+1) + 1);
+		printf ("[INFO] w_vec: %d\n", w_vec);
+		printf ("[INFO] data_w: %d\n", layer_config[layer][data_w]);
+		printf ("[INFO] data_h: %d\n", layer_config[layer][data_h]);
+		printf ("[INFO] conv_padding: %d\n", layer_config[layer][conv_padding]);
+		printf ("[INFO] weight_w: %d\n", layer_config[layer][weight_w]);	
+		printf ("[INFO] Some #1: %d\n", layer_config[layer][data_h]+2*layer_config[layer][conv_padding]-layer_config[layer][weight_h]+1);
+		printf ("[INFO] first part: %d\n", (layer_config[layer][data_w]+2*layer_config[layer][conv_padding]-layer_config[layer][weight_w]));
+		printf ("[INFO] second part: %d\n", (w_vec-layer_config[layer][weight_w]+1));
+		printf ("[INFO] Some #2: %d\n", ((layer_config[layer][data_w]+2*layer_config[layer][conv_padding]-layer_config[layer][weight_w])/(w_vec-layer_config[layer][weight_w]+1)) + 1);
+		// printf ("[INFO] Some #1: %d, Some #2: %d, data_w: %d, conv_padding: %d, w_vec: %d, weight_w: %d\n", layer_config[layer][data_h]+2*layer_config[layer][conv_padding]-layer_config[layer][weight_h]+1, ceil((layer_config[layer][data_w]+2*layer_config[layer][conv_padding]-W_VEC)/(W_VEC-layer_config[layer][weight_w]+1)), layer_config[layer][data_w], layer_config[layer][conv_padding], w_vec, layer_config[layer][weight_w]);
+	}
+
+	printf ("[INFO] Enqueueing the config buffer to controller queue\n");
+	status = clEnqueueWriteBuffer(que_controller, config_buf, CL_TRUE, 0, sizeof(fpga_configuration) * LAYER_NUM, config, 0, NULL, NULL);
+	checkError(status, "Failed to transfer config");
 
 	// Execute the kernel
 	cl_event memRdData_event;
@@ -287,66 +361,21 @@ int main(int argc, char** argv)
 	cl_ulong memRdWeight_time;
 	cl_ulong memWrite_time;
 	cl_ulong controller_time;
-
-	unsigned       iter_num;
-	unsigned short out_dim1xbatch;
-	unsigned int   out_dim1x2xbatch;
-	unsigned char  padding_offset;
-	unsigned char  conv_group_num_dim1, conv_group_num_dim2;
-	unsigned char  conv_win_size_dim1, conv_win_size_dim2;
-	unsigned int   conv_win_size_dim1x2x3;
-	unsigned char  conv_group_rem_dim1, conv_group_rem_dim2;
-	unsigned int   conv_group_rem_dim1x2x3;
-	unsigned short data_dim1x2;
-	unsigned char  weight_dim1x2;
-	unsigned int   weight_dim1x2x3;
-	unsigned short weight_dim4_div_LaneNum;
-	unsigned short pool_dim3_lastlayer_div_VecSize;
-	unsigned short conv_dim3_lastlayer_div_VecSize;
-	unsigned short pool_dim3_div_VecSize;
-	unsigned short conv_dim3_div_VecSize;
-	unsigned int   pic_num =1;
-
 	
 	for (int iter = 0; iter < 1; iter++) {
-		
+	
+		printf ("[INFO] Iteration number #%d\n", iter);
+	
 		loadImageToBuffer(pic_num);
 		printCurrentTime();
 		unsigned argi = 0;
+		char layer_num = LAYER_NUM;
 
 		// Setting the arguments for the controller
-		fpga_configuration config[LANE_NUM];
 		argi = 0;
 
-		for (int layer = 0; layer < LANE_NUM; layer++) {
-			config[layer].layer_type = layer_config[layer][layer_type];
-			config[layer].data_w = layer_config[layer][data_w];
-			config[layer].data_h = layer_config[layer][data_h];
-			config[layer].weight_w = layer_config[layer][weight_w];
-			config[layer].weight_h = layer_config[layer][weight_h];
-			config[layer].weight_n = layer_config[layer][weight_n];
-			config[layer].weight_m = layer_config[layer][weight_m];
-			config[layer].batch_size = layer_config[layer][batch_size];
-			config[layer].memrd_src = layer_config[layer][memrd_src];
-			config[layer].conv_x = layer_config[layer][conv_x];
-			config[layer].conv_y = layer_config[layer][conv_y];
-			config[layer].conv_z = layer_config[layer][conv_z];
-			config[layer].conv_stride = layer_config[layer][conv_stride];
-			config[layer].conv_padding = layer_config[layer][conv_padding];
-			config[layer].conv_split = layer_config[layer][conv_split];
-			config[layer].conv_relu = layer_config[layer][conv_relu];
-			config[layer].pool_on = layer_config[layer][pool_on];
-			config[layer].pool_x = layer_config[layer][pool_x];
-			config[layer].pool_y = layer_config[layer][pool_y];
-			config[layer].pool_z = layer_config[layer][pool_z];
-			config[layer].pool_size = layer_config[layer][pool_size];
-			config[layer].conv_stride = layer_config[layer][pool_stride];
-			config[layer].lrn_on = layer_config[layer][lrn_on];
-			config[layer].memwr_dst = layer_config[layer][memwr_dst];
-			config[layer].num_bricks = 1;
-		}
-
-		status = clSetKernelArg(knl_controller, argi++, sizeof(fpga_configuration)*LAYER_NUM, config);
+		printf ("[INFO] Setting kernel arguments for the controller\n ");
+		status = clSetKernelArg(knl_controller, argi++, sizeof(cl_char), &layer_num);
 		checkError(status, "Failed to set argument %d of kernel controller", argi-1);
 
 		status = clSetKernelArg(knl_controller, argi++, sizeof(cl_char), &precision_config[0][frac_w]);
@@ -358,43 +387,50 @@ int main(int argc, char** argv)
 		status = clSetKernelArg(knl_controller, argi++, sizeof(cl_char), &precision_config[0][frac_dout]);
 		checkError(status, "Failed to set argument %d of kernel controller", argi-1);
 
+		status = clSetKernelArg(knl_controller, argi++, sizeof(cl_mem), &config_buf);
+		checkError(status, "Failed to set argument %d of kernel controller", argi-1);
+
 		// Setting the arguments for the memory read data module
 		argi = 0;
 		char config_size = LAYER_NUM;
 
+		printf ("[INFO] Setting kernel arguments for the memRdData\n");
 		status = clSetKernelArg(knl_memRdData, argi++, sizeof(cl_char), &config_size);
 		checkError(status, "Failed to set argument %d of kernel memory read data", argi-1);
 
-		status = clSetKernelArg(knl_memRdData, argi++, sizeof(cl_mem), bottom0_buf);
+		status = clSetKernelArg(knl_memRdData, argi++, sizeof(cl_mem), &bottom0_buf);
 		checkError(status, "Failed to set argument %d of kernel memory read data", argi-1);
 
-		status = clSetKernelArg(knl_memRdData, argi++, sizeof(cl_mem), bottom1_buf);
+		status = clSetKernelArg(knl_memRdData, argi++, sizeof(cl_mem), &bottom1_buf);
 		checkError(status, "Failed to set argument %d of kernel memory read data", argi-1);
 
 		argi = 0;
 
-		status = clSetKernelArg(que_memRdWeight, argi++, sizeof(cl_char), &config_size);
+		printf ("[INFO] Setting kernel arguments for the memRdWeight\n");
+		status = clSetKernelArg(knl_memRdWeight, argi++, sizeof(cl_char), &config_size);
 		checkError(status, "Failed to set argument %d of kernel memory read weight", argi-1);
 
-		status = clSetKernelArg(que_memRdWeight, argi++, sizeof(cl_mem), weights);
+		status = clSetKernelArg(knl_memRdWeight, argi++, sizeof(cl_mem), &weights_buf);
 		checkError(status, "Failed to set argument %d of kernel memory read weight", argi-1);
 
-		status = clSetKernelArg(que_memRdWeight, argi++, sizeof(cl_mem), biases);
+		status = clSetKernelArg(knl_memRdWeight, argi++, sizeof(cl_mem), &bias_buf);
 		checkError(status, "Failed to set argument %d of kernel memory read weight", argi-1);
 
 		argi = 0;
 
-		status = clSetKernelArg(que_memWrite, argi++, sizeof(cl_char), &config_size);
+		printf ("[INFO] Setting kernel arguments for the memWrite\n");
+		status = clSetKernelArg(knl_memWrite, argi++, sizeof(cl_char), &config_size);
 		checkError(status, "Failed to set argument %d of kernel memory write");
 
-		status = clSetKernelArg(que_memWrite, argi++, sizeof(cl_mem), bottom0_buf);
+		status = clSetKernelArg(knl_memWrite, argi++, sizeof(cl_mem), &bottom0_buf);
 		checkError(status, "Failed to set argument %d of kernel memory write");
 
-		status = clSetKernelArg(que_memWrite, argi++, sizeof(cl_mem), bottom1_buf);
+		status = clSetKernelArg(knl_memWrite, argi++, sizeof(cl_mem), &bottom1_buf);
 		checkError(status, "Failed to set argument %d of kernel memory write");
 
 		// Enqueueing kernels
-		status = ckEnqueueTask(que_controller, knl_controller, 0, NULL, &controller_event);
+		printf ("[INFO] Enqueuing tasks [controller,memRdData,memRdWeight,memWrite]\n");
+		status = clEnqueueTask(que_controller, knl_controller, 0, NULL, &controller_event);
 		checkError(status, "Failed to launch kernel controller");
 
 		status = clEnqueueTask(que_memRdData, knl_memRdData, 0, NULL, &memRdData_event);
@@ -406,23 +442,42 @@ int main(int argc, char** argv)
 		status = clEnqueueTask(que_memWrite, knl_memWrite, 0, NULL, &memWrite_event);
 		checkError(status, "Failed to launch kernel write");
 
+		// Waiting for the events
+		status = clWaitForEvents(1, &controller_event);
+		checkError(status, "Failed to wait for the controller kernel\n");
+		printf ("[INFO] Done with the controller!\n");
+
+		status = clWaitForEvents(1, &memRdData_event);
+		checkError(status, "Failed to wait for the memRdData kernel\n");
+		printf ("[INFO] Done with the memReadData!\n");
+		
+		status = clWaitForEvents(1, &memRdWeight_event);
+		checkError(status, "Failed to wait for the memRdWeight kernel\n");
+		printf ("[INFO] Done with the memReadWeight!\n");
+
+		status = clWaitForEvents(1, &memWrite_event);
+		checkError(status, "Failed to wait for the memWrite kernel\n");
+		printf ("[INFO] Done with memWrite!\n");
+
+		printf ("[INFO] Calculating kernel runtime\n");
 		memRdData_time = getKernelStartEndTime(memRdData_event, "memRd");
 		memRdWeight_time = getKernelStartEndTime(memRdWeight_event, "conv");
 		memWrite_time = getKernelStartEndTime(memWrite_event, "memWr");
-		controller_event = getKernelStartEndTime(controller_event, "lrn");
+		controller_time = getKernelStartEndTime(controller_event, "lrn");
 
 		// Must release event object to avoid performance degeneration !!!
+
+		printf ("[INFO] Releasing events\n");
 		status = clReleaseEvent(memRdData_event);
 		checkError(status, "Failed to release mem read data event object");
-		status = clReleaseEvent(memRdWeight_time);
+		status = clReleaseEvent(memRdWeight_event);
 		checkError(status, "Failed to release mem read weight event object");
-		status = clReleaseEvent(memWrite_time);
+		status = clReleaseEvent(memWrite_event);
 		checkError(status, "Failed to release mem write event object");
 		status = clReleaseEvent(controller_event);
 		checkError(status, "Failed to release controller event object");
 
 		printCurrentTime();
-
 
 	} // end of iterations
 
@@ -459,7 +514,6 @@ void loadImageToBuffer(int num)
     }
     else
 		printf("Image file does not exits !!!\n");
-#endif
 
 	// Vectorize the input image by a factor of VEC_SIZE
 	for(unsigned n = 0; n<layer_config[0][data_n]/VEC_SIZE; n++){
@@ -503,9 +557,6 @@ int prepare()
 	// Load Image data, CNN net weights and golden_results
     ifstream bin_file_r;
     unsigned file_size;
-	unsigned weight_size;
-	unsigned output_size;
-	int ptr=0;  // original weight and bias offset for each layer
 
 	unsigned char  conv_win_size_dim1, conv_win_size_dim2;
 
@@ -609,25 +660,23 @@ int prepare()
 	// image and weight files
 	weights      = (DTYPE *)alignedMalloc(sizeof(DTYPE)*WEIGHTS_FILE_SIZE, DMA_ALIGNMENT);
 	image        = (DTYPE *)alignedMalloc(sizeof(DTYPE)*IMAGE_FILE_SIZE, DMA_ALIGNMENT);
-
+	biases	     = (DTYPE *)alignedMalloc(sizeof(DTYPE)*BIASES_FILE_SIZE, DMA_ALIGNMENT);
 	// input data buffers
 	// padding the input RGB image with extra number of zeros channels, so that data_n/weight_n is divisible by VEC_SIZE
 	layer_config[0][weight_n] = ceil((float)layer_config[0][weight_n]/VEC_SIZE)*VEC_SIZE;
+	printf ("[INFO] weight_n is changed to %d\n", layer_config[0][weight_n]);
 	layer_config[0][data_n] = layer_config[0][weight_n];
 
 	data_init   = (DTYPE *)alignedMalloc(sizeof(DTYPE)*layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n], DMA_ALIGNMENT);
 	memset(data_init, 0, sizeof(DTYPE)*layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]);// fill non-RGB dims with 0
 
-	if(weights == NULL || image == NULL || golden_ref == NULL || data_init == NULL || output == NULL || output_one_item == NULL || output_reorder == NULL)
+	if(weights == NULL || image == NULL || data_init == NULL || biases == NULL)
 	{
 		printf("Not enough memory !!!");
 		alignedFree(weights);
+		alignedFree(biases);
 		alignedFree(image);
 		alignedFree(data_init);
-		alignedFree(golden_ref);
-		alignedFree(output_one_item);
-		alignedFree(output);
-		alignedFree(output_reorder);
 
 		return 1;
 	}
@@ -671,8 +720,8 @@ void cleanup()
 		if(knl_controller) {
 			clReleaseKernel(knl_controller);
 		}
-		if(knl_name_memWrite) {
-			clReleaseKernel(knl_name_memWrite);
+		if(knl_memWrite) {
+			clReleaseKernel(knl_memWrite);
 		}
 
 		// Killing all the queues

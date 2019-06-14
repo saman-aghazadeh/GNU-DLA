@@ -13,7 +13,8 @@ __kernel void PE$peid$() {
 	DPTYPE bias;
 	// int id = get_compute_id(0);
 
-	int iter = 0; 
+
+	int iter = 0;
 
 	// Every PE is working all the time. It should loop forver to compute new outputs,
 	// and also receive new weights for the next set of output features.
@@ -23,9 +24,6 @@ __kernel void PE$peid$() {
 
 		// Reading the instruction required for the number of multiplication for one output
 		instruction inst = read_channel_intel(chain_instruction_channels[$peid$]);
-
-		// Bypassing the instruction to the next PE
-		write_channel_intel(chain_instruction_channels[$peid+1$], inst);
 
 		// conv_loop_cnt realizes how many iteration is required to
 		// get output for a row of output for this specific output
@@ -37,7 +35,7 @@ __kernel void PE$peid$() {
 		char frac_din = inst.frac_din;
 		char frac_dout = inst.frac_dout;
 		char out_ch_per_pe = inst.out_ch_per_pe;
-		int num_bricks = inst.num_bricks;
+		uint num_bricks = inst.num_bricks;
 
 		// Number of weight vectors that we are going to read
 		// it again should be equal to weight_height * weights_dim3/VEC_SIZE.
@@ -45,7 +43,7 @@ __kernel void PE$peid$() {
 		char num_weight_plates = inst.num_weight_plates;
 
 		// printf ("[FPGA][PE$peid$][%d] frac_w=%d, frac_din=%d, frac_dout=%d, out_ch_per_pe=%d, num_bricks=%d, num_weight_plates=%d\n", iter, frac_w, frac_din, frac_dout, out_ch_per_pe, num_bricks, num_weight_plates);
-		
+
 		char out_ch = 0;
 
 		// All the work that should be done in this layer
@@ -68,16 +66,16 @@ __kernel void PE$peid$() {
 				// write_channel_intel(chain_weight_channels[id+1], temp_weight);
 				// weight_buffer[i] = temp_weight.weight[id];
 				weight_buffer[i] = read_channel_intel(weight_channels[$peid$]);
-			}
+			}			
 
 			
-			for (int brick = 0; brick < num_bricks; brick++) {
+			for (uint brick = 0; brick < num_bricks; brick++) {
 				w_data accumulation;
 				//__local w_data acc_sign_exten;
 				//__local w_data acc_with_rnd_bit;
 				//__local w_data acc_sum_bias;
-			
-				// printf ("[FPGA][PE$peid$][%d] Handling brick %d\n", iter, brick);	
+
+				// printf ("[FPGA][PE$peid$][%d] Handling brick %d\n", iter, brick);
 
 				// Now it's time to read the inputs and do the calculation
 				for (uint i = 0; i < conv_loop_cnt; i++) {
@@ -85,9 +83,9 @@ __kernel void PE$peid$() {
 					// printf ("[FPGA][PE$peid$][%d] Waiting to read something!\n", iter);
 					lane_cols feature = read_channel_intel(chain_data_channels[$peid$]);
 
+					// printf ("[FPGA][PE$peid$][%d] Done waiting to read something!\n", iter);
 					// Bypassing the data to next PE
 					// printf ("[FPGA][PE$peid$][%d] Passing the feature to the next PE!\n", iter);
-					write_channel_intel(chain_data_channels[$peid+1$], feature);
 
 					#pragma unroll
 					for (char w = 0; w < W_VEC; w++) {
@@ -95,8 +93,8 @@ __kernel void PE$peid$() {
 							(accumulation.w_data[w]) + mac(feature.cols[w], weight_buffer[i].cols[w]);
 					}
 				}
+				
 				/*
-
 				// Not sure why we have to do all these
 				#pragma unroll
 				for (unsigned i = 0; i < W_VEC; i++) {
@@ -115,21 +113,24 @@ __kernel void PE$peid$() {
 					else
 						acc_sum_bias.w_data[i] = (MASK9B & acc_with_rnd_bit.w_data[i]) + (bias>>(frac_w+frac_din-frac_dout-1)) + 0x01;
 
-					accumulation.w_data[i] = MASK8B & (acc_sum_bias.w_data[i] >> 0x01);
-
-					
+					accumulation.w_data[i] = MASK8B & (acc_sum_bias.w_data[i] >> 0x01);					
 				}
 				*/
+
 				// After an array of output is generated, we will bypass that output to the next layer.
 				// It actually combines it's own output with the previous layer output, and then pass 
 				// it on
-
-				channel_cols0 toNext;
-				toNext.cols[0] = accumulation;
+				channel_cols$peid-1$ fromPrev;
+				channel_cols$peid$ toNext;
+				fromPrev = read_channel_intel(chain_output_channels$peid-1$);
+				#pragma unroll
+				for (int col = 0; col < $peid$; col++) {
+					toNext.cols[col] = fromPrev.cols[col];
+				}
+				toNext.cols[$peid$] = accumulation;
 				write_channel_intel(chain_output_channels$peid$, toNext);
-				// printf ("[FPGA][PE$peid$][%d] written somethng to the output channel!\n", iter);
+				// printf ("[FPGA][PE$peid$][%d] written something to the output channel!\n", iter);
 			}
-
 			out_ch++;
 		}
 		iter++;
