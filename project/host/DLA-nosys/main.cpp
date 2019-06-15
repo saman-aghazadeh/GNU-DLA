@@ -133,7 +133,7 @@ cl_uint num_devices = 0;
 cl_platform_id platform_id = NULL;
 cl_context context = NULL;
 cl_program program = NULL;
-cl_device_id device;
+cl_device_id *device;
 cl_kernel knl_memRdData;
 cl_kernel knl_memRdWeight;
 cl_kernel knl_controller;
@@ -189,23 +189,23 @@ int main(int argc, char** argv)
 	}
 
 	// Query the available OpenCL device
-	device = *(getDevices(platform_id, DEVICE_TYPE, &num_devices));
+	device = getDevices(platform_id, DEVICE_TYPE, &num_devices);
 	printf("\nPlatform: %s\n", getPlatformName(platform_id).c_str());
 	printf("Using %d device(s)\n", num_devices);
 	for(unsigned i = 0; i < num_devices; ++i) {
-		printf("  Device %d: %s\n", i, getDeviceName(device).c_str());
-		displayDeviceInfo(device);
+		printf("  Device %d: %s\n", i, getDeviceName(device[i]).c_str());
+		displayDeviceInfo(device[i]);
 	}
 
 	// Create the context.
-	context = clCreateContext(NULL, num_devices, &device, NULL, NULL, &status);
+	context = clCreateContext(NULL, 1, device, NULL, NULL, &status);
 	checkError(status, "Failed to create context");
 
 	// Create Program Objects
 	char *kernel_file_name=argv[1];
 
 	// Create the program for all device. All devices execute the same kernel.
-	program = createProgramFromFile(context, (const char *) kernel_file_name, &device, num_devices);
+	program = createProgramFromFile(context, (const char *) kernel_file_name, device, 1);
 
 	// Prepare compute data
 	status = prepare();
@@ -217,13 +217,13 @@ int main(int argc, char** argv)
 	// Command queue
 	
 	printf ("[INFO] Creating the command queues\n");
-	que_memRdData = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &status);
+	que_memRdData = clCreateCommandQueue(context, device[0], CL_QUEUE_PROFILING_ENABLE, &status);
 	checkError(status, "Failed to create command queue for memReadData");
-	que_memRdWeight = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &status);
+	que_memRdWeight = clCreateCommandQueue(context, device[0], CL_QUEUE_PROFILING_ENABLE, &status);
 	checkError(status, "Failed to create command queue for memRdWeight");
-	que_controller = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &status);
+	que_controller = clCreateCommandQueue(context, device[0], CL_QUEUE_PROFILING_ENABLE, &status);
 	checkError(status, "Failed to create command queue for controller");
-	que_memWrite = clCreateCommandQueue(context, device, CL_QUEUE_PROFILING_ENABLE, &status);
+	que_memWrite = clCreateCommandQueue(context, device[0], CL_QUEUE_PROFILING_ENABLE, &status);
 	checkError(status, "Failed to create command queue for memWrite");
 
 	// Kernel
@@ -367,7 +367,6 @@ int main(int argc, char** argv)
 		printf ("[INFO] Iteration number #%d\n", iter);
 	
 		loadImageToBuffer(pic_num);
-		printCurrentTime();
 		unsigned argi = 0;
 		char layer_num = LAYER_NUM;
 
@@ -428,6 +427,8 @@ int main(int argc, char** argv)
 		status = clSetKernelArg(knl_memWrite, argi++, sizeof(cl_mem), &bottom1_buf);
 		checkError(status, "Failed to set argument %d of kernel memory write");
 
+		printCurrentTime();
+
 		// Enqueueing kernels
 		printf ("[INFO] Enqueuing tasks [controller,memRdData,memRdWeight,memWrite]\n");
 		status = clEnqueueTask(que_controller, knl_controller, 0, NULL, &controller_event);
@@ -459,6 +460,8 @@ int main(int argc, char** argv)
 		checkError(status, "Failed to wait for the memWrite kernel\n");
 		printf ("[INFO] Done with memWrite!\n");
 
+		printCurrentTime();
+
 		printf ("[INFO] Calculating kernel runtime\n");
 		memRdData_time = getKernelStartEndTime(memRdData_event, "memRd");
 		memRdWeight_time = getKernelStartEndTime(memRdWeight_event, "conv");
@@ -476,8 +479,6 @@ int main(int argc, char** argv)
 		checkError(status, "Failed to release mem write event object");
 		status = clReleaseEvent(controller_event);
 		checkError(status, "Failed to release controller event object");
-
-		printCurrentTime();
 
 	} // end of iterations
 
@@ -708,7 +709,7 @@ void cleanup()
 {
 
 	// Release the opencl runtime resource allocated
-	for(unsigned i = 0; i < num_devices; ++i) {
+	for(unsigned i = 0; i < 1; ++i) {
 
 		// Killing the kernels
 		if(knl_memRdData) {

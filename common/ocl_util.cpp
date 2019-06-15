@@ -329,6 +329,7 @@ cl_device_id *getDevices(cl_platform_id pid, cl_device_type dev_type, cl_uint *n
   checkError(status, "Query for device ids");
 
   return dids;
+
 }
 
 // Returns the device information
