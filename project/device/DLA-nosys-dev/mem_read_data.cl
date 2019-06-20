@@ -6,8 +6,8 @@ void memReadData(
 		// Number of layers involved
 		char config_size,
 		// Data Ports
-		__global volatile lane_data	*restrict bottom0,
-		__global volatile lane_data 	*restrict bottom1)
+		__global lane_data	*restrict bottom0,
+		__global lane_data 	*restrict bottom1)
 
 {
 
@@ -84,19 +84,19 @@ void memReadData(
 							(feature_idx_x-conv_padding) + 
 							w;
 
-						if ((feature_idx_x+w >= conv_padding && feature_idx_x+w < data_w + conv_padding)
-							&&
-							(feature_idx_y >= conv_padding && feature_idx_y < data_h + conv_padding)) {
+						// if ((feature_idx_x+w >= conv_padding && feature_idx_x+w < data_w + conv_padding)
+						//	&&
+						//	(feature_idx_y >= conv_padding && feature_idx_y < data_h + conv_padding)) {
 							if (flag == 0x00) {
 								data_for_convs.cols[w] = bottom0[read_index];
 							} else {
 								data_for_convs.cols[w] = bottom1[read_index];
 							}
-						} else {
-							#pragma unroll
-							for (unsigned char vv = 0; vv < VEC_SIZE; vv++)
-								data_for_convs.cols[w].data[vv] = CZERO;
-						}
+						// } else {
+						//	#pragma unroll
+						//	for (unsigned char vv = 0; vv < VEC_SIZE; vv++)
+						//		data_for_convs.cols[w].data[vv] = CZERO;
+						// }
 					}
 
 					// DAMN we read the plate. Now it's time for peanut butter jelly.
