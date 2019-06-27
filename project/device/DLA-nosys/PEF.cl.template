@@ -31,20 +31,20 @@ __kernel void PE$peid$() {
 		// weight_height * weights_dim3/VEC_SIZE;
 		uint conv_loop_cnt = inst.conv_loop_cnt;
 
-		char frac_w = inst.frac_w;
-		char frac_din = inst.frac_din;
-		char frac_dout = inst.frac_dout;
-		char out_ch_per_pe = inst.out_ch_per_pe;
+		int frac_w = inst.frac_w;
+		int frac_din = inst.frac_din;
+		int frac_dout = inst.frac_dout;
+		int out_ch_per_pe = inst.out_ch_per_pe;
 		uint num_bricks = inst.num_bricks;
 
 		// Number of weight vectors that we are going to read
 		// it again should be equal to weight_height * weights_dim3/VEC_SIZE.
 		// 
-		char num_weight_plates = inst.num_weight_plates;
+		int num_weight_plates = inst.num_weight_plates;
 
 		// printf ("[FPGA][PE$peid$][%d] frac_w=%d, frac_din=%d, frac_dout=%d, out_ch_per_pe=%d, num_bricks=%d, num_weight_plates=%d\n", iter, frac_w, frac_din, frac_dout, out_ch_per_pe, num_bricks, num_weight_plates);
 
-		char out_ch = 0;
+		int out_ch = 0;
 
 		// All the work that should be done in this layer
 		while (out_ch < out_ch_per_pe) {
@@ -60,7 +60,7 @@ __kernel void PE$peid$() {
 					
 			// Case 2:
 			bias = read_channel_intel(bias_channels[$peid$]);
-			for (char i = 0; i < num_weight_plates; i++) {
+			for (int i = 0; i < num_weight_plates; i++) {
 				// Case 1:
 				// weight_lane_cols temp_weight = read_channel_intel(chain_weight_channels[id]);
 				// write_channel_intel(chain_weight_channels[id+1], temp_weight);
