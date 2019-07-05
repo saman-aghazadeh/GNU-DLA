@@ -686,7 +686,28 @@ unsigned layer_config[][NUM_CONFIG_ITEM] = {{0,
 							14, 14, 512, 1, 1, 0, 1,
 							1, 7, 7, 512, 2, 2,
 							0,
-							2}//Layer-13  (conv5_3)    Note: for last conv layer, outputs are write to fc buffer
+							2},//Layer-13  (conv5_3)    Note: for last conv layer, outputs are write to fc buffer
+							{1,
+							7, 7, 512, 7, 7, 512, 4096, 4096,
+							2,
+							1, 1, 4096, 7, 0, 0, 1,
+							0, 1, 1, 4096, 0, 0,
+							0,
+							3},//Layer-14  (fc6)
+							{1,
+							1, 1, 4096, 1, 1, 4096, 4096, 4096,
+							3,
+							1, 1, 4096, 1, 0, 0, 1,
+							0, 1, 1, 4096, 0, 0,
+							0,
+							2},//Layer-15  (fc7)
+							{1,
+							1, 1, 4096, 1, 1, 4096, 1024, 1024,
+							2,
+							1, 1, 1024, 1, 0, 0, 0,
+							0, 1, 1, 1024, 0, 0,
+							0,
+							3}//Layer-16  (fc8)	
 							};
 
 

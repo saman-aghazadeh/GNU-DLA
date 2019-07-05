@@ -31,18 +31,21 @@ void memReadData(
 		int data_w_with_padding = data_w + 2 * conv_padding;
 		int data_h_with_padding = data_h + 2 * conv_padding;
 
-		// printf ("[FPGA][memReadData][%d] layer_type=%d, data_w=%d, data_h=%d, weight_m=%d, weight_h=%d, weight_w=%d, weight_n=%d, conv_padding=%d, data_w_with_padding=%d, data_h_with_padding=%d\n", i, layer_type, data_w, data_h, weight_m, weight_h, weight_w, weight_n, conv_padding, data_w_with_padding, data_h_with_padding);
+		//if (i >= 13)
+		//	printf ("[FPGA][memReadData][%d] layer_type=%d, data_w=%d, data_h=%d, weight_m=%d, weight_h=%d, weight_w=%d, weight_n=%d, conv_padding=%d, data_w_with_padding=%d, data_h_with_padding=%d\n", i, layer_type, data_w, data_h, weight_m, weight_h, weight_w, weight_n, conv_padding, data_w_with_padding, data_h_with_padding);
 
 		// It may seems strange, but it's memReadData responsibility, to let the 
 		// PE knows that it has to load a new set of weights.
 
 		// TODO: We assume for now that weight_m is divisble by LANE_NUM
-		char out_channel_iter = weight_m / LANE_NUM;
-		// printf ("[FPGA][memReadData][%d] out_channel_iter is %d\n", i, out_channel_iter);	
+		int out_channel_iter = weight_m / LANE_NUM;
+		//if (i >= 13)
+		//	printf ("[FPGA][memReadData][%d] out_channel_iter is %d\n", i, out_channel_iter);	
 
-		for (char j = 0; j < out_channel_iter; j++) {
+		for (int j = 0; j < out_channel_iter; j++) {
 	
-			// printf ("[FPGA][memReadData][%d] processing out channel=%d\n", i, j*LANE_NUM);
+			//if (i >= 13)
+			//	printf ("[FPGA][memReadData][%d] processing out channel=%d\n", i, j*LANE_NUM);
 			// We have to read the data brick by brick.
 			// Every brick is of size 
 			// W_VEC * weight_h * weight_n
@@ -54,7 +57,8 @@ void memReadData(
 			uint num_bricks = 0;
 			while (brick_idx_y != data_h_with_padding-weight_h+1) {
 
-				// printf ("[FPGA][memReadData][%d] Processing a new brick with brick_idx_x=%d and brick_idx_y=%d and id=%d\n", i, brick_idx_x, brick_idx_y, num_bricks);
+				//if (i >= 13)
+				//	printf ("[FPGA][memReadData][%d] Processing a new brick with brick_idx_x=%d and brick_idx_y=%d and id=%d\n", i, brick_idx_x, brick_idx_y, num_bricks);
 
 				// These indexes determines where are we in the 
 				// feature map.
@@ -65,10 +69,12 @@ void memReadData(
 				// TODO: Here assume weight_n is divisible by VEC_SIZE
 				short num_plates = weight_h * (weight_n/VEC_SIZE);
 
-				// printf ("[FPGA][memReadData][%d] num_plates is %d\n", i, num_plates);
+				//if (i >= 13)
+				//	printf ("[FPGA][memReadData][%d] num_plates is %d\n", i, num_plates);
 
 				for (short plate = 0; plate < num_plates; plate++) {
-					// printf ("[FPGA][memReadData] Processing plate=%d\n", plate);						
+					//if (i >= 12)
+						//printf ("[FPGA][memReadData] Processing plate=%d\n", plate);						
 					lane_cols data_for_convs;
 
 					// We have to read a plate of data, which is of 
@@ -98,9 +104,11 @@ void memReadData(
 
 					// DAMN we read the plate. Now it's time for peanut butter jelly.
 					// Just kidding! we have to send the data to the first PE. 
-					// printf ("[FPGA][memReadData][%d] Before sending the data\n", i);
+					//if (i >= 12)
+					//	printf ("[FPGA][memReadData][%d] Before sending the data\n", i);
 					write_channel_intel(winograd_transform_channels, data_for_convs);
-					// printf ("[FPGA][memReadData][%d] After sending the data\n", i);
+					//if (i >= 12)
+					//	printf ("[FPGA][memReadData][%d] After sending the data\n", i);
 
 					// Alright data is sent, we have to move on to the next plate.
 					// That means, we have to update out feature indexes
@@ -118,14 +126,15 @@ void memReadData(
 					}
 				}
 
-				if ((brick_idx_y == data_h_with_padding-1) && (brick_idx_x+(W_VEC-weight_w+1) >= data_w_with_padding-1 )){
-					brick_idx_y = 0;
-				} else if (brick_idx_x + (W_VEC-weight_w+1) >= data_w_with_padding-1) {
-					brick_idx_y++;
-				}
+				//if ((brick_idx_y == data_h_with_padding-1) && (brick_idx_x+(W_VEC+1) > data_w_with_padding )){
+				//	brick_idx_y++;
+				//} else if (brick_idx_x + (W_VEC+1) > data_w_with_padding) {
+				//	brick_idx_y++;
+				//}
 
-				if (brick_idx_x + (W_VEC-weight_w+1) >= data_w_with_padding-1) {
+				if (brick_idx_x + (W_VEC+1) > data_w_with_padding) {
 					brick_idx_x = 0;
+					brick_idx_y++;
 				} else {
 					brick_idx_x += (W_VEC-weight_w+1);
 				}

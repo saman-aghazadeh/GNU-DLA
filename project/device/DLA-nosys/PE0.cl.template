@@ -46,7 +46,7 @@ __kernel void PE$peid$() {
 
 		// printf ("[FPGA][PE$peid$][%d] frac_w=%d, frac_din=%d, frac_dout=%d, out_ch_per_pe=%d, num_bricks=%d, num_weight_plates=%d\n", iter, frac_w, frac_din, frac_dout, out_ch_per_pe, num_bricks, num_weight_plates);
 		
-		char out_ch = 0;
+		int out_ch = 0;
 
 		// All the work that should be done in this layer
 		while (out_ch < out_ch_per_pe) {

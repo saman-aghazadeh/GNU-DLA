@@ -29,17 +29,20 @@ void memWrite(
 
 		// We assume conv_z is divisble by LANE_NUM
 		uint num_plates = conv_y * (conv_z/LANE_NUM) * ((conv_x-1)/W_INV_VEC + 1);
-
-		// printf ("[FPGA][memWrite][%d] conv_x=%d, conv_y=%d, conv_z=%d, weight_w=%d, num_plates=%d\n", i, conv_x, conv_y, conv_z, weight_w, num_plates);
+		
+		//if (i >= 13)
+		//	printf ("[FPGA][memWrite][%d] conv_x=%d, conv_y=%d, conv_z=%d, weight_w=%d, num_plates=%d\n", i, conv_x, conv_y, conv_z, weight_w, num_plates);
 
 		for (uint plate = 0; plate < num_plates; plate++) {
 			inv_rows inv;
 
 			inv = read_channel_intel(winograd_inv_transform_channels);
 
-			// printf ("[FPGA][memWrite][%d] plate=%d\n", i, plate);
+			//if (i >= 13)
+			//	printf ("[FPGA][memWrite][%d] plate=%d\n", i, plate);
 			
-			// printf ("[FPGA][memWrite][%d] start writing to memory!\n", i);
+			//if (i >= 13)
+			//	printf ("[FPGA][memWrite][%d] start writing to memory!\n", i);
 			#pragma unroll
 			for (char w = 0; w < W_INV_VEC; w++) {
 
@@ -48,7 +51,9 @@ void memWrite(
 				else
 					bottom1[write_index+w] = inv.cols[w];
 			}
-			// printf ("[FPGA][memWrite][%d] finished writing to memory!\n", i);
+
+			//if (i >= 12)
+			//	printf ("[FPGA][memWrite][%d] finished writing to memory!\n", i);
 			write_index += W_INV_VEC;
 		}
 		flag = (~flag) & 0x01;	
