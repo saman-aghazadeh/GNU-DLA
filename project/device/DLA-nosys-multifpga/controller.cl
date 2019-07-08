@@ -5,6 +5,8 @@ __attribute__((max_global_work_dim(0)))
 void controller(
 	// Number of layers involved
 	char config_size,
+	char deser_data,
+	char ser_data,
 	// Parameters
 	char frac_w,
 	char frac_din,
@@ -12,7 +14,16 @@ void controller(
 	// Configuration parameters
 	__global configuration	*restrict config) 
 
-{
+{	
+
+	if (deser_data) {
+		memrd_data_deser_configuration memrd_data_deser_config;
+		memrd_data_deser_config.data_w = config[0].data_w;
+		memrd_data_deser_config.data_h = config[0].data_h;
+		memrd_data_deser_config.weight_n = config[0].weight_n;
+
+		write_channel_intel(memrd_data_deser_configuration_channel, memrd_data_deser_config);
+	}
 
 	// printf ("[FPGA][Controller] Number of layers is %d\n", config_size);
 
@@ -44,9 +55,7 @@ void controller(
 		int memwr_dst = config[i].memwr_dst;
 		int num_bricks = config[i].num_bricks;
 
-		//if (i >= 12) {
-		//	printf ("[FPGA][Controller] Layer %d execution. layer_type=%d, data_w=%d, data_h=%d, weight_w=%d, weight_h=%d, weight_n=%d, weight_m=%d, bias_size=%d, memrd_src=%d, conv_x=%d, conv_y=%d, conv_z=%d, num_bricks=%d\n", i, layer_type, data_w, data_h, weight_w, weight_h, weight_n, weight_m, bias_size, memrd_src, conv_x, conv_y, conv_z, num_bricks);
-		//}
+		// printf ("[FPGA][Controller] Layer %d execution. layer_type=%d, data_w=%d, data_h=%d, weight_w=%d, weight_h=%d, weight_n=%d, weight_m=%d, bias_size=%d, memrd_src=%d, conv_x=%d, conv_y=%d, conv_z=%d, num_bricks=%d\n", i, layer_type, data_w, data_h, weight_w, weight_h, weight_n, weight_m, bias_size, memrd_src, conv_x, conv_y, conv_z, num_bricks);
 
 		// This part controls the memrd_data module
 		memrd_data_configuration memrd_data_config;
@@ -89,5 +98,13 @@ void controller(
 
 	}
 
+	if (ser_data) {
+		memrd_data_ser_configuration memrd_data_ser_config;
+		memrd_data_ser_config.nl_data_w = config[config_size].data_w;
+		memrd_data_ser_config.nl_data_h = config[config_size].data_h;
+		memrd_data_ser_config.nl_weight_n = config[config_size].weight_n;
+		
+		write_channel_intel(memrd_data_ser_configuration_channel, memrd_data_ser_config);;
+	}
 
 }

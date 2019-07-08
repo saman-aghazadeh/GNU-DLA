@@ -10,6 +10,7 @@ HOST_EXE_CHANNEL_TEST_RX = run_channel_test_rx.exe
 HOST_EXE_MAC_TEST = run_mac_test.exe
 HOST_EXE_CHANNEL_MULTI_FPGA = run_channel_multi_fpga.exe
 HOST_EXE_DLA_NOSYS = run_dla_nosys.exe
+HOST_EXE_DLA_NOSYS_MULTI_FPGA = run_dla_nosys_multi_fpga.exe
 HOST_SRCS = ./host/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_V2 = ./host/main_v2.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_V3 = ./host/main_v3.cpp ../common/ocl_util.cpp ../common/timer.cpp
@@ -21,6 +22,7 @@ HOST_SRCS_CHANNEL_TEST_RX = ./host/channel_test_main_rx.cpp ../common/ocl_util.c
 HOST_SRCS_MAC_TEST = ./host/multi-fpga/template_rxtx_ut.cpp ./host/multi-fpga/fpgaStreamDrv.cpp ../common/AOCLUtils/opencl.cpp ../common/AOCLUtils/options.cpp
 HOST_SRCS_CHANNEL_MULTI_FPGA = ./host/multi-fpga/channel/multi_fpga.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_DLA_NOSYS = ./host/DLA-nosys/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
+HOST_SRCS_DLA_NOSYS_MULTI_FPGA = ./host/DLA-nosys-multi-fpga/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 
 HOST_OBJS = $(HOST_SRCS:%.cpp=%.o)
 HOST_OBJS_V2 = $(HOST_SRCS_V2:%.cpp=%.o)
@@ -33,6 +35,7 @@ HOST_OBJS_CHANNEL_TEST_TX = $(HOST_SRCS_CHANNEL_TEST_TX:%.cpp=%.o)
 HOST_OBJS_CHANNEL_TEST_RX = $(HOST_SRCS_CHANNEL_TEST_RX:%.cpp=%.o)
 HOST_OBJS_CHANNEL_MULTI_FPGA = $(HOST_SRCS_CHANNEL_MULTI_FPGA:%.cpp=%.o)
 HOST_OBJS_DLA_NOSYS = $(HOST_SRCS_DLA_NOSYS:%.cpp=%.o)
+HOST_OBJS_DLA_NOSYS_MULTI_FPGA = $(HOST_SRCS_DLA_NOSYS_MULTI_FPGA:%.cpp=%.o)
 
 HOST_INCS = ../common
 HOST_DEBUG =
@@ -162,9 +165,9 @@ all: host fpga
 
 .PHONY: host
 ifeq ($(FLOW),sw_emu)
-host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CASCADE_EMU) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_CHANNEL_MULTI_FPGA) $(HOST_EXE_DLA_NOSYS)
+host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CASCADE_EMU) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_CHANNEL_MULTI_FPGA) $(HOST_EXE_DLA_NOSYS) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA)
 else
-host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_DLA_NOSYS)
+host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_DLA_NOSYS) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA)
 endif
 
 .PHONY: fpga
@@ -205,6 +208,9 @@ $(HOST_EXE_CHANNEL_MULTI_FPGA): $(HOST_OBJS_CHANNEL_MULTI_FPGA)
 
 $(HOST_EXE_DLA_NOSYS): $(HOST_OBJS_DLA_NOSYS)
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_DLA_NOSYS) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
+
+$(HOST_EXE_DLA_NOSYS_MULTI_FPGA): $(HOST_OBJS_DLA_NOSYS_MULTI_FPGA)
+	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_DLA_NOSYS_MULTI_FPGA) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
 
 %.o: %.cpp
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(CXXFLAGS) -c $< -o $@ $(COMP_CONFIG) $(OCV_LIBS)
