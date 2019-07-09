@@ -398,7 +398,7 @@ int main(int argc, char** argv)
 		config_buf[i] = clCreateBuffer(context[i], CL_MEM_READ_WRITE, sizeof(fpga_configuration) * (layers_per_device[i]+1), NULL, &status);
 		checkError(status, "Failed to create buffer for config");
 
-		fpga_configuration fpga_config[layers_per_device[i]+1];
+		fpga_configuration config[layers_per_device[i]+1];
 		//printf ("[INFO] Layers_per_device+1=%d\n", layers_per_device[i]+1);
 		//for (int j = 0; j < layers_per_device[i]+1; j++) {
 		//	printf("[INFO] %d,%d\n",j, config[j].layer_type);
@@ -408,36 +408,63 @@ int main(int argc, char** argv)
 		for (int layer = 0; layer < layers_per_device[i]+1; layer++) {
 
 			printf ("[INFO] Working on the layer #%d\n", layer);
-			fpga_config[layer].layer_type = layer_config[assigned_layers[i][0]+layer][layer_type];
+			config[layer].layer_type = layer_config[assigned_layers[i][0]+layer][layer_type];
 			
 			printf ("[INFO] Layer type is %d\n", layer_config[assigned_layers[i][0]+layer][layer_type]);
-			fpga_config[layer].data_w = layer_config[assigned_layers[i][0]+layer][data_w];
-			fpga_config[layer].data_h = layer_config[assigned_layers[i][0]+layer][data_h];
-			fpga_config[layer].weight_w = layer_config[assigned_layers[i][0]+layer][weight_w];
-			fpga_config[layer].weight_h = layer_config[assigned_layers[i][0]+layer][weight_h];
-			fpga_config[layer].weight_n = layer_config[assigned_layers[i][0]+layer][weight_n];
-			fpga_config[layer].weight_m = layer_config[assigned_layers[i][0]+layer][weight_m];
-			fpga_config[layer].memrd_src = layer_config[assigned_layers[i][0]+layer][memrd_src];
-			fpga_config[layer].conv_x = layer_config[assigned_layers[i][0]+layer][conv_x];
-			fpga_config[layer].conv_y = layer_config[assigned_layers[i][0]+layer][conv_y];
-			fpga_config[layer].conv_z = layer_config[assigned_layers[i][0]+layer][conv_z];
-			fpga_config[layer].conv_stride = layer_config[assigned_layers[i][0]+layer][conv_stride];
-			fpga_config[layer].conv_padding = layer_config[assigned_layers[i][0]+layer][conv_padding];
-			fpga_config[layer].conv_split = layer_config[assigned_layers[i][0]+layer][conv_split];
-			fpga_config[layer].conv_relu = layer_config[assigned_layers[i][0]+layer][conv_relu];
-			fpga_config[layer].pool_on = layer_config[assigned_layers[i][0]+layer][pool_on];
-			fpga_config[layer].pool_x = layer_config[assigned_layers[i][0]+layer][pool_x];
-			fpga_config[layer].pool_y = layer_config[assigned_layers[i][0]+layer][pool_y];
-			fpga_config[layer].pool_z = layer_config[assigned_layers[i][0]+layer][pool_z];
-			fpga_config[layer].pool_size = layer_config[assigned_layers[i][0]+layer][pool_size];
-			fpga_config[layer].conv_stride = layer_config[assigned_layers[i][0]+layer][pool_stride];
-			fpga_config[layer].lrn_on = layer_config[assigned_layers[i][0]+layer][lrn_on];
-			fpga_config[layer].memwr_dst = layer_config[assigned_layers[i][0]+layer][memwr_dst];
+			config[layer].data_w = layer_config[assigned_layers[i][0]+layer][data_w];
+			config[layer].data_h = layer_config[assigned_layers[i][0]+layer][data_h];
+			config[layer].weight_w = layer_config[assigned_layers[i][0]+layer][weight_w];
+			config[layer].weight_h = layer_config[assigned_layers[i][0]+layer][weight_h];
+			config[layer].weight_n = layer_config[assigned_layers[i][0]+layer][weight_n];
+			config[layer].weight_m = layer_config[assigned_layers[i][0]+layer][weight_m];
+			config[layer].memrd_src = layer_config[assigned_layers[i][0]+layer][memrd_src];
+			config[layer].conv_x = layer_config[assigned_layers[i][0]+layer][conv_x];
+			config[layer].conv_y = layer_config[assigned_layers[i][0]+layer][conv_y];
+			config[layer].conv_z = layer_config[assigned_layers[i][0]+layer][conv_z];
+			config[layer].conv_stride = layer_config[assigned_layers[i][0]+layer][conv_stride];
+			config[layer].conv_padding = layer_config[assigned_layers[i][0]+layer][conv_padding];
+			config[layer].conv_split = layer_config[assigned_layers[i][0]+layer][conv_split];
+			config[layer].conv_relu = layer_config[assigned_layers[i][0]+layer][conv_relu];
+			config[layer].pool_on = layer_config[assigned_layers[i][0]+layer][pool_on];
+			config[layer].pool_x = layer_config[assigned_layers[i][0]+layer][pool_x];
+			config[layer].pool_y = layer_config[assigned_layers[i][0]+layer][pool_y];
+			config[layer].pool_z = layer_config[assigned_layers[i][0]+layer][pool_z];
+			config[layer].pool_size = layer_config[assigned_layers[i][0]+layer][pool_size];
+			config[layer].conv_stride = layer_config[assigned_layers[i][0]+layer][pool_stride];
+			config[layer].lrn_on = layer_config[assigned_layers[i][0]+layer][lrn_on];
+			config[layer].memwr_dst = layer_config[assigned_layers[i][0]+layer][memwr_dst];
 		
-			//printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "layer_type: %d, data_w: %d, data_h: %d, weight_w: %d, weight_h: %d, weight_n: %d, weight_m: %d, memrd_src: %d, conv_x: %d, conv_y: %d, conv_z: %d, conv_stride: %d, conv_padding: %d, conv_split: %d, conv_relu: %d, pool_on: %d, pool_x: %d, pool_y: %d, pool_z: %d, pool_size: %d, conv_stride: %d, lrn_on: %d, memwr_dst: %d\n", i, layer_config[assigned_layers[i][0]+layer][layer_type], layer_config[assigned_layers[i][0]+layer][data_w], layer_config[assigned_layers[i][0]+layer][data_h], layer_config[assigned_layers[i][0]+layer][weight_w], layer_config[assigned_layers[i][0]+layer][weight_h], layer_config[assigned_layers[i][0]+layer][weight_n], layer_config[assigned_layers[i][0]+layer][weight_m], layer_config[assigned_layers[i][0]+layer][memrd_src], layer_config[assigned_layers[i][0]+layer][conv_x], layer_config[assigned_layers[i][0]+layer][conv_y], layer_config[assigned_layers[i][0]+layer][conv_z], layer_config[assigned_layers[i][0]+layer][conv_stride], layer_config[assigned_layers[i][0]+layer][conv_padding], layer_config[assigned_layers[i][0]+layer][conv_split], layer_config[assigned_layers[i][0]+layer][conv_relu], layer_config[assigned_layers[i][0]+layer][pool_on], layer_config[assigned_layers[i][0]+layer][pool_x], layer_config[assigned_layers[i][0]+layer][pool_y], layer_config[assigned_layers[i][0]+layer][pool_z], layer_config[assigned_layers[i][0]+layer][pool_size], layer_config[assigned_layers[i][0]+layer][pool_stride], layer_config[assigned_layers[i][0]+layer][lrn_on], layer_config[assigned_layers[i][0]+layer][memwr_dst]);
+	
+			if (assigned_layers[i][0]+layer == LAYER_NUM-1) {
+				config[layer].layer_type = 0;
+				config[layer].data_w = 0;
+				config[layer].data_h = 0;
+				config[layer].weight_w = 0;
+				config[layer].weight_h = 0;
+				config[layer].weight_n = 0;
+				config[layer].weight_m = 0;
+				config[layer].memrd_src = 0;
+				config[layer].conv_x = 0;
+				config[layer].conv_y = 0;
+				config[layer].conv_z = 0;
+				config[layer].conv_stride = 0;
+				config[layer].conv_padding = 0;
+				config[layer].conv_split = 0;
+				config[layer].conv_relu = 0;
+				config[layer].pool_on = 0;
+				config[layer].pool_x = 0;
+				config[layer].pool_y = 0;
+				config[layer].pool_z = 0;
+				config[layer].pool_size = 0;
+				config[layer].conv_stride = 0;
+				config[layer].lrn_on = 0;
+				config[layer].memwr_dst = 0;
+			}	
+
+			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "layer_type: %d, data_w: %d, data_h: %d, weight_w: %d, weight_h: %d, weight_n: %d, weight_m: %d, memrd_src: %d, conv_x: %d, conv_y: %d, conv_z: %d, conv_stride: %d, conv_padding: %d, conv_split: %d, conv_relu: %d, pool_on: %d, pool_x: %d, pool_y: %d, pool_z: %d, pool_size: %d, conv_stride: %d, lrn_on: %d, memwr_dst: %d\n", i, layer_config[assigned_layers[i][0]+layer][layer_type], layer_config[assigned_layers[i][0]+layer][data_w], layer_config[assigned_layers[i][0]+layer][data_h], layer_config[assigned_layers[i][0]+layer][weight_w], layer_config[assigned_layers[i][0]+layer][weight_h], layer_config[assigned_layers[i][0]+layer][weight_n], layer_config[assigned_layers[i][0]+layer][weight_m], layer_config[assigned_layers[i][0]+layer][memrd_src], layer_config[assigned_layers[i][0]+layer][conv_x], layer_config[assigned_layers[i][0]+layer][conv_y], layer_config[assigned_layers[i][0]+layer][conv_z], layer_config[assigned_layers[i][0]+layer][conv_stride], layer_config[assigned_layers[i][0]+layer][conv_padding], layer_config[assigned_layers[i][0]+layer][conv_split], layer_config[assigned_layers[i][0]+layer][conv_relu], layer_config[assigned_layers[i][0]+layer][pool_on], layer_config[assigned_layers[i][0]+layer][pool_x], layer_config[assigned_layers[i][0]+layer][pool_y], layer_config[assigned_layers[i][0]+layer][pool_z], layer_config[assigned_layers[i][0]+layer][pool_size], layer_config[assigned_layers[i][0]+layer][pool_stride], layer_config[assigned_layers[i][0]+layer][lrn_on], layer_config[assigned_layers[i][0]+layer][memwr_dst]);
 		
 			int w_vec = W_VEC;
-			fpga_config[layer].num_bricks = (layer_config[assigned_layers[i][0]+layer][data_h]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_h]+1)*((layer_config[assigned_layers[i][0]+layer][data_w]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_w])/(W_VEC-layer_config[assigned_layers[i][0]+layer][weight_w]+1) + 1);
+			config[assigned_layers[i][0]+layer].num_bricks = (layer_config[assigned_layers[i][0]+layer][data_h]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_h]+1)*((layer_config[assigned_layers[i][0]+layer][data_w]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_w])/(W_VEC-layer_config[assigned_layers[i][0]+layer][weight_w]+1) + 1);
 			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "w_vec: %d\n", i, w_vec);
 			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "data_w: %d\n", i, layer_config[assigned_layers[i][0]+layer][data_w]);
 			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "data_h: %d\n", i, layer_config[assigned_layers[i][0]+layer][data_h]);
@@ -451,7 +478,7 @@ int main(int argc, char** argv)
 		}
 	
 		printf ("[INFO] Enqueueing the config buffer to controller queue for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "\n", i);
-		status = clEnqueueWriteBuffer(que_controller[i], config_buf[i], CL_TRUE, 0, sizeof(fpga_configuration) * (layers_per_device[i]+1), &(fpga_config[i]), 0, NULL, NULL);
+		status = clEnqueueWriteBuffer(que_controller[i], config_buf[i], CL_TRUE, 0, sizeof(fpga_configuration) * (layers_per_device[i]+1), &(config[i]), 0, NULL, NULL);
 		checkError(status, "Failed to transfer config");
 
 	}	
@@ -466,9 +493,9 @@ int main(int argc, char** argv)
 	}
 
 	for (int i = 0; i < num_devices; i++) {
-		printf ("[INFO] Waiting for device %d\n", i);
+		printf ("[INFO] Waiting for device %d\n");
 		pthread_join((device_threads[i]), NULL);
-		printf ("[INFO] device %d has joined!\n", i);
+		printf ("[INFO] device %d has joined!\n");
 	}
 
 	//Recorde the end time
@@ -862,6 +889,8 @@ void* device_runner (void* args) {
 
 
 	for (int iter = 0; iter < 1; iter++) {
+	
+		printf ("[INFO] Iteration number #%d\n", iter);
 
 		if (i == 0)	
 			loadImageToBuffer(pic_num);
@@ -871,7 +900,7 @@ void* device_runner (void* args) {
 		// Setting the arguments for the controller
 		argi = 0;
 
-		printf ("[INFO] Setting kernel arguments for the controller for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
+		printf ("[INFO] Setting kernel arguments for the controller\n ");
 		status = clSetKernelArg(knl_controller[i], argi++, sizeof(cl_char), &layer_num);
 		checkError(status, "Failed to set argument %d of kernel controller", argi-1);
 
@@ -906,7 +935,7 @@ void* device_runner (void* args) {
 		// Setting the arguments for the deser module
 		argi = 0;
 		
-		printf("[INFO] Setting kernel arguments for the deser for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
+		printf("[INFO] Setting kernel arguments for the deser\n");
 		status = clSetKernelArg(knl_deser[i], argi++, sizeof(cl_char), &deser_data);
 		checkError(status, "Failed to set argument %d of kernel deser", argi-1);
 
@@ -924,7 +953,7 @@ void* device_runner (void* args) {
 		if (assigned_layers[i][0] % 2 == 0) start_buffer = 0x00;
 		else start_buffer = 0x01;
 
-		printf ("[INFO] Setting kernel arguments for the memRdData for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
+		printf ("[INFO] Setting kernel arguments for the memRdData\n");
 		status = clSetKernelArg(knl_memRdData[i], argi++, sizeof(cl_char), &config_size);
 		checkError(status, "Failed to set argument %d of kernel memory read data", argi-1);
 		
@@ -939,7 +968,7 @@ void* device_runner (void* args) {
 
 		argi = 0;
 
-		printf ("[INFO] Setting kernel arguments for the memRdWeight for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
+		printf ("[INFO] Setting kernel arguments for the memRdWeight\n");
 		status = clSetKernelArg(knl_memRdWeight[i], argi++, sizeof(cl_char), &config_size);
 		checkError(status, "Failed to set argument %d of kernel memory read weight", argi-1);
 
@@ -950,14 +979,9 @@ void* device_runner (void* args) {
 		checkError(status, "Failed to set argument %d of kernel memory read weight", argi-1);
 
 		argi = 0;
-		if (assigned_layers[i][0] % 2 == 0) start_buffer = 0x01;
-		else start_buffer = 0x00;
-		
-		printf ("[INFO] Setting kernel arguments for the memWrite for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
-		status = clSetKernelArg(knl_memWrite[i], argi++, sizeof(cl_char), &config_size);
-		checkError(status, "Failed to set argument %d of kernel memory write", argi-1);
 
-		status = clSetKernelArg(knl_memWrite[i], argi++, sizeof(cl_char), &start_buffer);
+		printf ("[INFO] Setting kernel arguments for the memWrite\n");
+		status = clSetKernelArg(knl_memWrite[i], argi++, sizeof(cl_char), &config_size);
 		checkError(status, "Failed to set argument %d of kernel memory write", argi-1);
 
 		status = clSetKernelArg(knl_memWrite[i], argi++, sizeof(cl_mem), &(bottom0_buf[i]));
@@ -973,7 +997,7 @@ void* device_runner (void* args) {
 		if (assigned_layers[i][layers_per_device[i]-1] % 2 == 0) top = &(bottom1_buf[i]);
 		else top = &(bottom0_buf[i]);
 
-		printf ("[INFO] Setting kernel argumnents for the memWrite for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
+		printf ("[INFO] Setting kernel argumnents for the memWrite\n");
 		status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_char), &ser_data);
 		checkError(status, "Failed to set argument %d of kernel ser", argi-1);
 	
@@ -983,67 +1007,53 @@ void* device_runner (void* args) {
 		printCurrentTime();
 
 		// Enqueueing kernels
-		printf ("[INFO] Enqueuing tasks [controller,deser[if],memRdData,memRdWeight,memWrite,ser[if]] " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
-		printf ("[INFO] Enqueuing tasks controller " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
+		printf ("[INFO] Enqueuing tasks [controller,memRdData,memRdWeight,memWrite]\n");
 		status = clEnqueueTask(que_controller[i], knl_controller[i], 0, NULL, &controller_event);
 		checkError(status, "Failed to launch kernel controller");
 
-		if (i != 0) {
-			printf ("[INFO] Enqueuing tasks deser " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
-			status = clEnqueueTask(que_memRdData[i], knl_deser[i], 0, NULL, &deser_event);
-			checkError(status, "Failed to lauch kernel deserializer");
-		}
-	
-		printf ("[INFO] Enqueuing tasks memRdData " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
+		status = clEnqueueTask(que_memRdData[i], knl_ser[i], 0, NULL, &deser_event);
+		checkError(status, "Failed to lauch kernel deserializer");
+
 		status = clEnqueueTask(que_memRdData[i], knl_memRdData[i], 0, NULL, &memRdData_event);
 		checkError(status, "Failed to launch kernel memory read data");
 
-		printf ("[INFO] Enqueuing tasks memRdWeight " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
 		status = clEnqueueTask(que_memRdWeight[i], knl_memRdWeight[i], 0, NULL, &memRdWeight_event);
 		checkError(status, "Failed to launch kernel memory read weight");
 
-		printf ("[INFO] Enqueuing tasks memWrite " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
 		status = clEnqueueTask(que_memWrite[i], knl_memWrite[i], 0, NULL, &memWrite_event);
 		checkError(status, "Failed to launch kernel write");
 
-		if (i != num_devices -1) {
-			printf ("[INFO] Enqueuing tasks ser " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
-			status = clEnqueueTask(que_memWrite[i], knl_ser[i], 0, NULL, &ser_event);
-			checkError(status, "Failed to launch kernel serializer");
-		}
+		status = clEnqueueTask(que_memWrite[i], knl_ser[i], 0, NULL, &ser_event);
+		checkError(status, "Failed to launch kernel serializer");
 
 		// Waiting for the events
 		status = clWaitForEvents(1, &controller_event);
 		checkError(status, "Failed to wait for the controller kernel\n");
-		printf ("[INFO] Done with the controller for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
+		printf ("[INFO] Done with the controller!\n");
 
-		if (i != 0) {
-			status = clWaitForEvents(1, &deser_event);
-			checkError(status, "Failed to wait for the deserializer kernel\n");
-			printf ("[INFO] Done with the deser for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
-		}
+		status = clWaitForEvents(1, &deser_event);
+		checkError(status, "Failed to wait for the deserializer kernel\n");
+		printf ("[INFO] Done with the deser!\n");
 
 		status = clWaitForEvents(1, &memRdData_event);
 		checkError(status, "Failed to wait for the memRdData kernel\n");
-		printf ("[INFO] Done with the memReadData for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
+		printf ("[INFO] Done with the memReadData!\n");
 		
 		status = clWaitForEvents(1, &memRdWeight_event);
 		checkError(status, "Failed to wait for the memRdWeight kernel\n");
-		printf ("[INFO] Done with the memReadWeight for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
+		printf ("[INFO] Done with the memReadWeight!\n");
 
 		status = clWaitForEvents(1, &memWrite_event);
 		checkError(status, "Failed to wait for the memWrite kernel\n");
-		printf ("[INFO] Done with memWrite for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
+		printf ("[INFO] Done with memWrite!\n");
 
-		if (i != num_devices-1) {
-			status = clWaitForEvents(1, &ser_event);
-			checkError(status, "Failed to wait for the ser kernel\n");
-			printf ("[INFO] Done with ser for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
-		}
+		status = clWaitForEvents(1, &ser_event);
+		checkError(status, "Failed to wait for the ser kernel\n");
+		printf ("[INFO] Done with ser!\n");
 
 		printCurrentTime();
 
-		printf ("[INFO] Calculating kernel runtime for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
+		printf ("[INFO] Calculating kernel runtime\n");
 		memRdData_time = getKernelStartEndTime(memRdData_event, "memRd");
 		memRdWeight_time = getKernelStartEndTime(memRdWeight_event, "conv");
 		memWrite_time = getKernelStartEndTime(memWrite_event, "memWr");
@@ -1051,25 +1061,21 @@ void* device_runner (void* args) {
 
 		// Must release event object to avoid performance degeneration !!!
 
-		printf ("[INFO] Releasing events for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
-	
-		if (i != 0) {
-			status = clReleaseEvent(deser_event);
-			checkError(status, "Failed to release deser data event object");
-		}
+		printf ("[INFO] Releasing events\n");
+		status = clReleaseEvent(deser_event);
+		checkError(status, "Failed to release deser data event object");
 		status = clReleaseEvent(memRdData_event);
 		checkError(status, "Failed to release mem read data event object");
 		status = clReleaseEvent(memRdWeight_event);
 		checkError(status, "Failed to release mem read weight event object");
 		status = clReleaseEvent(memWrite_event);
 		checkError(status, "Failed to release mem write event object");
-		if (i != num_devices-1) {
-			status = clReleaseEvent(ser_event);
-			checkError(status, "Failed to release ser data event object");
-		}
+		status = clReleaseEvent(ser_event);
+		checkError(status, "Failed to release ser data event object");
 		status = clReleaseEvent(controller_event);
 		checkError(status, "Failed to release controller event object");
 
 	} // end of iterations
+
 
 }

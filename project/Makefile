@@ -100,7 +100,7 @@ endif
 ifeq ($(USE_OPENCV),1)
 CXXFLAGS = -g -Wall -std=c++11 -DUSE_OPENCV #-DVERBOSE_OUTPUT
 else
-CXXFLAGS = -g -Wall -std=c++11 #-DVERBOSE_OUTPUT
+CXXFLAGS = -g -O0 -Wall -std=c++11 #-DVERBOSE_OUTPUT
 endif
 
 #select whether manually launch free-run kernels

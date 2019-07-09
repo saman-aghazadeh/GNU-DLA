@@ -707,7 +707,14 @@ unsigned layer_config[][NUM_CONFIG_ITEM] = {{0,
 							1, 1, 1024, 1, 0, 0, 0,
 							0, 1, 1, 1024, 0, 0,
 							0,
-							3}//Layer-16  (fc8)	
+							3},//Layer-16  (fc8)
+							{1,
+							1, 1, 4096, 1, 1, 4096, 1024, 1024,
+							2,
+							1, 1, 1024, 1, 0, 0, 0,
+							0, 1, 1, 1024, 0, 0,
+							0,
+							3} //Extra layer-17 (Useless, just for reference)
 							};
 
 

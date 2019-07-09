@@ -2,6 +2,7 @@
 __kernel
 __attribute__((max_global_work_dim(0)))
 void deser(
+		char device_number,
 		char deser_data,
 		__global ulong4		*restrict bottom)
 {
@@ -17,6 +18,13 @@ void deser(
 
 		int total_size = data_w * data_h * weight_n;
 		total_size = ((total_size + 31)) / 32;
+
+		printf ("[FPGA][Deser][DEV%d] deserilizing with data_w=%d, data_h=%d, weight_n=%d, total_size\n",
+                        device_number,
+                        memrd_data_deser_config.data_w,
+                        memrd_data_deser_config.data_h,
+                        memrd_data_deser_config.weight_n,
+			total_size);
 
 		for (int i = 0; i < total_size; i++) {
 			ulong4 buf;
@@ -34,6 +42,7 @@ void deser(
 __kernel
 __attribute__((max_global_work_dim(0)))
 void memReadData(
+		char device_number
 		// Number of layers involved
 		char config_size,
 		char start_buffer,
@@ -42,7 +51,6 @@ void memReadData(
 		__global lane_data 	*restrict bottom1)
 
 {
-
 
 	// This flag specifies which global data part we should
 	// read the data from.
@@ -65,18 +73,18 @@ void memReadData(
 		int data_w_with_padding = data_w + 2 * conv_padding;
 		int data_h_with_padding = data_h + 2 * conv_padding;
 
-		// printf ("[FPGA][memReadData][%d] layer_type=%d, data_w=%d, data_h=%d, weight_m=%d, weight_h=%d, weight_w=%d, weight_n=%d, conv_padding=%d, data_w_with_padding=%d, data_h_with_padding=%d\n", i, layer_type, data_w, data_h, weight_m, weight_h, weight_w, weight_n, conv_padding, data_w_with_padding, data_h_with_padding);
+		printf ("[FPGA][memReadData][DEV%d][%d] layer_type=%d, data_w=%d, data_h=%d, weight_m=%d, weight_h=%d, weight_w=%d, weight_n=%d, conv_padding=%d, data_w_with_padding=%d, data_h_with_padding=%d\n", device_number, i, layer_type, data_w, data_h, weight_m, weight_h, weight_w, weight_n, conv_padding, data_w_with_padding, data_h_with_padding);
 
 		// It may seems strange, but it's memReadData responsibility, to let the 
 		// PE knows that it has to load a new set of weights.
 
 		// TODO: We assume for now that weight_m is divisble by LANE_NUM
 		int out_channel_iter = weight_m / LANE_NUM;
-		// printf ("[FPGA][memReadData][%d] out_channel_iter is %d\n", i, out_channel_iter);	
+		printf ("[FPGA][memReadData][DEV%d][%d] out_channel_iter is %d\n", device_number, i, out_channel_iter);	
 
 		for (int j = 0; j < out_channel_iter; j++) {
 	
-			// printf ("[FPGA][memReadData][%d] processing out channel=%d\n", i, j*LANE_NUM);
+			printf ("[FPGA][memReadData][DEV%d][%d] processing out channel=%d\n", device_number, i, j*LANE_NUM);
 			// We have to read the data brick by brick.
 			// Every brick is of size 
 			// W_VEC * weight_h * weight_n
@@ -88,7 +96,7 @@ void memReadData(
 			uint num_bricks = 0;
 			while (brick_idx_y != data_h_with_padding-weight_h+1) {
 
-				// printf ("[FPGA][memReadData][%d] Processing a new brick with brick_idx_x=%d and brick_idx_y=%d and id=%d\n", i, brick_idx_x, brick_idx_y, num_bricks);
+				printf ("[FPGA][memReadData][DEV%d][%d] Processing a new brick with brick_idx_x=%d and brick_idx_y=%d and id=%d\n", device_number, i, brick_idx_x, brick_idx_y, num_bricks);
 
 				// These indexes determines where are we in the 
 				// feature map.

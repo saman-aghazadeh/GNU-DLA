@@ -2,6 +2,7 @@
 __kernel
 __attribute__((max_global_work_dim(0)))
 void memWrite(
+				char device_number,
 				char config_size,
 				char start_buffer,
 				// Params Ports
@@ -31,14 +32,14 @@ void memWrite(
 		// We assume conv_z is divisble by LANE_NUM
 		uint num_plates = conv_y * (conv_z/LANE_NUM) * ((conv_x-1)/W_INV_VEC + 1);
 
-		// printf ("[FPGA][memWrite][%d] conv_x=%d, conv_y=%d, conv_z=%d, weight_w=%d, num_plates=%d\n", i, conv_x, conv_y, conv_z, weight_w, num_plates);
+		printf ("[FPGA][memWrite][DEV%d][%d] conv_x=%d, conv_y=%d, conv_z=%d, weight_w=%d, num_plates=%d\n", device_number, i, conv_x, conv_y, conv_z, weight_w, num_plates);
 
 		for (uint plate = 0; plate < num_plates; plate++) {
 			inv_rows inv;
 
 			inv = read_channel_intel(winograd_inv_transform_channels);
 
-			// printf ("[FPGA][memWrite][%d] plate=%d\n", i, plate);
+			printf ("[FPGA][memWrite][DEV%d][%d] plate=%d\n", device_number, i, plate);
 			
 			// printf ("[FPGA][memWrite][%d] start writing to memory!\n", i);
 			#pragma unroll
@@ -61,6 +62,7 @@ void memWrite(
 __kernel
 __attribute__((max_global_work_dim(0)))
 void ser(
+		char device_number,
 		char ser_data,
 		__global ulong4		*restrict bottom)
 {
@@ -76,6 +78,12 @@ void ser(
 
 		int total_size = nl_data_w * nl_data_h * nl_weight_n;
 		total_size = ((total_size + 31) / 32);
+
+                printf ("[FPGA][ser][DEV%d] serializing with data_w=%d, data_h=%d, weight_n=%d\n",
+                        device_number,
+                        memrd_data_ser_config.nl_data_w,
+                        memrd_data_ser_config.nl_data_h,
+                        memrd_data_ser_config.nl_weight_n); 
 
 		for (int i = 0; i < total_size; i++) {
 			ulong4 buf;
