@@ -19,11 +19,11 @@ void deser(
 		int total_size = data_w * data_h * weight_n;
 		total_size = ((total_size + 31)) / 32;
 
-		printf ("[FPGA][Deser][DEV%d] deserilizing with data_w=%d, data_h=%d, weight_n=%d, total_size\n",
+		printf ("[FPGA][Deser][DEV%d] deserilizing with data_w=%d, data_h=%d, weight_n=%d, total_size=%d\n",
                         device_number,
-                        memrd_data_deser_config.data_w,
-                        memrd_data_deser_config.data_h,
-                        memrd_data_deser_config.weight_n,
+                        config.data_w,
+                        config.data_h,
+                        config.weight_n,
 			total_size);
 
 		for (int i = 0; i < total_size; i++) {
@@ -42,7 +42,7 @@ void deser(
 __kernel
 __attribute__((max_global_work_dim(0)))
 void memReadData(
-		char device_number
+		char device_number,
 		// Number of layers involved
 		char config_size,
 		char start_buffer,

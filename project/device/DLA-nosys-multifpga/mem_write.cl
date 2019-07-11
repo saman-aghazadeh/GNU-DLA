@@ -81,9 +81,9 @@ void ser(
 
                 printf ("[FPGA][ser][DEV%d] serializing with data_w=%d, data_h=%d, weight_n=%d\n",
                         device_number,
-                        memrd_data_ser_config.nl_data_w,
-                        memrd_data_ser_config.nl_data_h,
-                        memrd_data_ser_config.nl_weight_n); 
+                        config.nl_data_w,
+                        config.nl_data_h,
+                        config.nl_weight_n); 
 
 		for (int i = 0; i < total_size; i++) {
 			ulong4 buf;
