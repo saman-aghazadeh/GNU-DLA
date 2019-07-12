@@ -41,7 +41,7 @@
 // #define LANE_NUM            32             // larger than 1, for alexnet: 2, 3, 4, 8, 12, 15, 16, 22, 28, 32, 34, 48, 50, 51, 52, 64, ...
 
 #define VEC_SIZE		8
-#define LANE_NUM		32
+#define LANE_NUM		16
 #define W_VEC			8	      // This is the size of the Width data that is being piped into the PEs
 #define W_INV_VEC 		6
 #define MEMRDWEIGHT_BANKWIDTH	128
@@ -62,6 +62,7 @@
 
 #endif
 
+#define VGG16_TEST
 #ifdef VGG16_TEST
 
 	// #define WIN_BUF_SIZE        25088/VEC_SIZE // for VGG-16  batch=1
@@ -69,7 +70,7 @@
 
 	#define WIN_BUF_SIZE        25088/VEC_SIZE // for VGG-16  batch=1
 	//#define WEIGHT_BUF_SIZE     25088/VEC_SIZE // for VGG-16  batch=1
-	#define WEIGHT_BUF_SIZE		6
+	#define WEIGHT_BUF_SIZE		500
 
 #endif
 

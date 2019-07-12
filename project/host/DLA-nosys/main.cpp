@@ -154,11 +154,15 @@ DTYPE *weights;
 DTYPE *biases;
 DTYPE *image;
 DTYPE *data_init;
+unsigned int weight_buf_size;
+unsigned int bias_buf_size;
+
 
 unsigned layer_config_original[LAYER_NUM][NUM_CONFIG_ITEM];
 
 void loadImageToBuffer(int num);
 int  prepare();
+int reorderWeights(unsigned padding_offset[]);
 void printCurrentTime();
 void cleanup();
 
@@ -166,8 +170,6 @@ int main(int argc, char** argv)
 {
 	cl_int status;
 
-	unsigned int weight_buf_size;
-	unsigned int bias_buf_size;
 	unsigned int pic_num = 1;
 
 	if (argc != 2){
@@ -700,8 +702,99 @@ int prepare()
     }
     else
     	printf("Weights file does not exits !!!\n");
+    int status = EXIT_SUCCESS;//reorderWeights(padding_offset);
+    if(status != EXIT_SUCCESS) {
+    	printf("Error in reorderWeights : %d\n", status);
+    	return status;
+    }
+	return EXIT_SUCCESS;
+}
 
-	return 0;
+#include "winograd.h"
+
+// for all the layers, performs Winograd transformation and reorders the weight vectorized by VEC_SIZE and LANE_NUM
+// *weight will point to a new memory region after this funciton finishes executing and the old region will be deallocated
+// TODO: support other Winograd sizes
+int reorderWeights(unsigned padding_offset[LAYER_NUM])
+{
+	// reordered_weights store the weights for all layers after they are transformed and reordered
+	DTYPE *reordered_weights = (DTYPE *)alignedMalloc(sizeof(DTYPE)*weight_buf_size, DMA_ALIGNMENT);
+	if(reordered_weights == NULL) {
+		printf("Memory allocation failed in reorderWeights\n");
+		return 1;
+	}
+	// layer_pointers: these pointers will refer the sub-region in weights, reordered_weights and biases buffer
+	// for the corresponding layer and will be updated every iteration of layer loop
+	DTYPE *weights_ptr = weights;
+	DTYPE *reordered_weights_ptr = reordered_weights;
+	DTYPE *biases_ptr = biases;
+
+	// layer loop: transforms the weights, does the necessary padding, reorders and stores the weights to reorder_weights
+	for(unsigned int l = 0; l < LAYER_NUM; l++) {
+		unsigned dim_w = layer_config[l][weight_w], dim_h = layer_config[l][weight_h],
+				 dim_n = layer_config[l][weight_n], dim_m = layer_config[l][weight_m],
+				 dim_n_original = layer_config_original[l][weight_n], dim_m_original = layer_config_original[l][weight_m];
+		// wino_weights buffer is used to store the transformed weights with added padding
+		DTYPE *wino_weights = (DTYPE *)malloc(sizeof(DTYPE) * dim_w * dim_h * dim_n * dim_m);
+		if(wino_weights == NULL) {
+			printf("Memory allocation failed in reorderWeights\n");
+			alignedFree(reordered_weights);
+			return EXIT_FAILURE;
+		}
+		// this loop applies winograd transformation (if necessary),
+		// performs padding given by padding_offset[l] and copies it to wino_weights
+		for(unsigned m = 0; m < dim_m_original; m++) {
+			for(unsigned n = 0; n < dim_n_original; n++) {
+				for(unsigned h = 0; h < dim_h; h++) {
+					DTYPE * weight_read_ptr = weights_ptr + (h * dim_w) + (n * dim_h * dim_w) + (m * dim_n_original * dim_h * dim_w);
+					DTYPE * weight_write_ptr = wino_weights + (h * dim_w) + (n * dim_h * dim_w) + ((m + padding_offset[l]) * dim_n * dim_h * dim_w);
+					unsigned vec_w = (layer_config[l][layer_type] == 0) ? W_VEC : dim_w;
+					if(layer_config[l][layer_type] == 0) {
+						// wino F(6, 3) for VGG16 conv kernels
+						// reads 3 weights starting from weight_read_ptr and write 8 transformed weights to weight_write_ptr
+						winograd_f6k3_kernel_transform(weight_read_ptr, weight_write_ptr, true);
+					}
+					else {
+						for(unsigned w = 0; w < dim_w; w++) {
+							weight_write_ptr[w] = weight_read_ptr[w];
+						}
+					}
+				}
+			}
+		}
+
+		for(unsigned m = 0; m < dim_m / LANE_NUM; m++) {
+			for(unsigned n = 0; n < dim_n / VEC_SIZE; n++) {
+				for(unsigned h = 0; h < dim_h; h++) {
+					for(unsigned w = 0; h < dim_w; h++) {
+						for(unsigned k = 0; k < LANE_NUM; k++) {
+							for(unsigned c = 0; c < VEC_SIZE; c++) {
+								reordered_weights_ptr[c + (k * VEC_SIZE) 
+														+ (w * LANE_NUM * VEC_SIZE) 
+														+ (h * dim_w * LANE_NUM * VEC_SIZE) 
+														+ (n * dim_h * dim_w * LANE_NUM * VEC_SIZE) 
+														+ (m * dim_n * dim_h * dim_w * LANE_NUM)]
+									= wino_weights[w + (h * dim_w) + ((n * VEC_SIZE + c) * dim_h * dim_w) + ((m * LANE_NUM + k) * dim_n * dim_h * dim_w)];
+							}
+						}
+					}
+				}
+			}
+		}
+		free(wino_weights);
+		weights_ptr += dim_w * dim_h * dim_n_original * dim_m_original;
+		reordered_weights_ptr += dim_w * dim_h * dim_n * dim_m;
+
+		// Now let's read the biases
+		unsigned original_bias_size = layer_config_original[l][bias_size];
+		for(unsigned m = 0; m < original_bias_size; m++)
+			biases_ptr[m + padding_offset[l]] = weights_ptr[m];
+		weights_ptr += original_bias_size;
+		biases_ptr += layer_config[l][bias_size];
+	}
+	alignedFree(weights);
+	weights = reordered_weights;
+	return EXIT_SUCCESS;
 }
 
 // Release all memory resources here

@@ -5,7 +5,11 @@
 __author__	= "Saman Biookaghazadeh"
 __copyright__	= "Copyright 2019 @ Arizona State University"
 
-var = input("Please enter the number of target processing elements: ")
+import sys
+if len(sys.argv) != 2:
+	var = input("Please enter the number of target processing elements: ")
+else:
+	var = int(sys.argv[1])
 target = open("PE.cl", "w")
 target_output_channels = open("PE_header.cl", "w")
 target_winograd = open("winograd_inv_transform.cl", "w")
