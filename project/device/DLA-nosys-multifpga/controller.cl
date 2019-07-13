@@ -24,11 +24,11 @@ void controller(
 		memrd_data_deser_config.data_h = config[0].data_h;
 		memrd_data_deser_config.weight_n = config[0].weight_n;
 
-		printf ("[FPGA][Controller][DEV%d] deserilizing with data_w=%d, data_h=%d, weight_n=%d\n",
-			device_number,
-			memrd_data_deser_config.data_w,
-			memrd_data_deser_config.data_h,
-			memrd_data_deser_config.weight_n);
+		//printf ("[FPGA][Controller][DEV%d] deserilizing with data_w=%d, data_h=%d, weight_n=%d\n",
+		//	device_number,
+		//	memrd_data_deser_config.data_w,
+		//	memrd_data_deser_config.data_h,
+		//	memrd_data_deser_config.weight_n);
 
 		write_channel_intel(memrd_data_deser_configuration_channel, memrd_data_deser_config);
 	}
@@ -63,7 +63,7 @@ void controller(
 		int memwr_dst = config[i].memwr_dst;
 		int num_bricks = config[i].num_bricks;
 
-		printf ("[FPGA][Controller][[DEV%d] Layer %d execution. layer_type=%d, data_w=%d, data_h=%d, weight_w=%d, weight_h=%d, weight_n=%d, weight_m=%d, bias_size=%d, memrd_src=%d, conv_x=%d, conv_y=%d, conv_z=%d, num_bricks=%d\n", device_number, i, layer_type, data_w, data_h, weight_w, weight_h, weight_n, weight_m, bias_size, memrd_src, conv_x, conv_y, conv_z, num_bricks);
+		//printf ("[FPGA][Controller][[DEV%d] Layer %d execution. layer_type=%d, data_w=%d, data_h=%d, weight_w=%d, weight_h=%d, weight_n=%d, weight_m=%d, bias_size=%d, memrd_src=%d, conv_x=%d, conv_y=%d, conv_z=%d, num_bricks=%d\n", device_number, i, layer_type, data_w, data_h, weight_w, weight_h, weight_n, weight_m, bias_size, memrd_src, conv_x, conv_y, conv_z, num_bricks);
 
 		// This part controls the memrd_data module
 		memrd_data_configuration memrd_data_config;
@@ -112,11 +112,11 @@ void controller(
 		memrd_data_ser_config.nl_data_h = config[config_size].data_h;
 		memrd_data_ser_config.nl_weight_n = config[config_size].weight_n;
 
-                printf ("[FPGA][Controller][DEV%d] serializing with data_w=%d, data_h=%d, weight_n=%d\n",
-                        device_number,
-                        memrd_data_ser_config.nl_data_w,
-                        memrd_data_ser_config.nl_data_h,
-                        memrd_data_ser_config.nl_weight_n);		
+                //printf ("[FPGA][Controller][DEV%d] serializing with data_w=%d, data_h=%d, weight_n=%d\n",
+                //        device_number,
+                //        memrd_data_ser_config.nl_data_w,
+                //        memrd_data_ser_config.nl_data_h,
+                //        memrd_data_ser_config.nl_weight_n);		
 
 		write_channel_intel(memrd_data_ser_configuration_channel, memrd_data_ser_config);;
 	}
