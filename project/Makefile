@@ -11,6 +11,7 @@ HOST_EXE_MAC_TEST = run_mac_test.exe
 HOST_EXE_CHANNEL_MULTI_FPGA = run_channel_multi_fpga.exe
 HOST_EXE_DLA_NOSYS = run_dla_nosys.exe
 HOST_EXE_DLA_NOSYS_MULTI_FPGA = run_dla_nosys_multi_fpga.exe
+HOST_EXE_3D = run_3d.exe
 HOST_SRCS = ./host/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_V2 = ./host/main_v2.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_V3 = ./host/main_v3.cpp ../common/ocl_util.cpp ../common/timer.cpp
@@ -23,6 +24,7 @@ HOST_SRCS_MAC_TEST = ./host/multi-fpga/template_rxtx_ut.cpp ./host/multi-fpga/fp
 HOST_SRCS_CHANNEL_MULTI_FPGA = ./host/multi-fpga/channel/multi_fpga.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_DLA_NOSYS = ./host/DLA-nosys/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_DLA_NOSYS_MULTI_FPGA = ./host/DLA-nosys-multi-fpga/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
+HOST_SRCS_3D = ./host/3D/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 
 HOST_OBJS = $(HOST_SRCS:%.cpp=%.o)
 HOST_OBJS_V2 = $(HOST_SRCS_V2:%.cpp=%.o)
@@ -36,6 +38,7 @@ HOST_OBJS_CHANNEL_TEST_RX = $(HOST_SRCS_CHANNEL_TEST_RX:%.cpp=%.o)
 HOST_OBJS_CHANNEL_MULTI_FPGA = $(HOST_SRCS_CHANNEL_MULTI_FPGA:%.cpp=%.o)
 HOST_OBJS_DLA_NOSYS = $(HOST_SRCS_DLA_NOSYS:%.cpp=%.o)
 HOST_OBJS_DLA_NOSYS_MULTI_FPGA = $(HOST_SRCS_DLA_NOSYS_MULTI_FPGA:%.cpp=%.o)
+HOST_OBJS_3D = $(HOST_SRCS_3D:%.cpp=%.o)
 
 HOST_INCS = ../common
 HOST_DEBUG =
@@ -98,9 +101,9 @@ endif
 
 #select whether use OpenCV or not
 ifeq ($(USE_OPENCV),1)
-CXXFLAGS = -g -Wall -std=c++11 -DUSE_OPENCV #-DVERBOSE_OUTPUT
+CXXFLAGS = -g -Wall -std=c++0x -DUSE_OPENCV #-DVERBOSE_OUTPUT
 else
-CXXFLAGS = -g -O0 -Wall -std=c++11 #-DVERBOSE_OUTPUT
+CXXFLAGS = -g -O0 -Wall -std=c++0x #-DVERBOSE_OUTPUT
 endif
 
 #select whether manually launch free-run kernels
@@ -108,7 +111,7 @@ ifeq ($(FLOW),sw_emu)
 CXXFLAGS += -DSW_EMU
 endif
 
-MODEL = VGG16_TEST
+MODEL = C3D_TEST
 
 ifeq ($(VENDOR),xilinx)
 COMP_CONFIG = -I$(XILINX_SDX)/runtime/include/1_2 -I$(HOST_INCS)  -DFPGA_DEVICE -DXILINX
@@ -165,14 +168,16 @@ all: host fpga
 
 .PHONY: host
 ifeq ($(FLOW),sw_emu)
-host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CASCADE_EMU) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_CHANNEL_MULTI_FPGA) $(HOST_EXE_DLA_NOSYS) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA)
+# host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CASCADE_EMU) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_CHANNEL_MULTI_FPGA) $(HOST_EXE_DLA_NOSYS) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA) $(HOST_EXE_3D)
+host: $(HOST_EXE_3D)
 else
-host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_DLA_NOSYS) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA)
+# host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_DLA_NOSYS) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA) $(HOST_EXE_3D)
+host: $(HOST_EXE_3D)
 endif
 
 .PHONY: fpga
 ifeq ($(FLOW),sw_emu)
-fpga: $(DEV_EXE) $(DEV_EXE_CASCADE_EMU)
+fpga: $(DEV_EXE) #$(DEV_EXE_CASCADE_EMU)
 else
 fpga: $(DEV_EXE) $(HOST_EXE_CHANNEL_MULTI_FPGA)
 endif
@@ -211,6 +216,9 @@ $(HOST_EXE_DLA_NOSYS): $(HOST_OBJS_DLA_NOSYS)
 
 $(HOST_EXE_DLA_NOSYS_MULTI_FPGA): $(HOST_OBJS_DLA_NOSYS_MULTI_FPGA)
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_DLA_NOSYS_MULTI_FPGA) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
+
+$(HOST_EXE_3D): $(HOST_OBJS_3D)
+	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_3D) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
 
 %.o: %.cpp
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(CXXFLAGS) -c $< -o $@ $(COMP_CONFIG) $(OCV_LIBS)
