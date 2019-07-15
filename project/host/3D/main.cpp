@@ -134,6 +134,7 @@ typedef struct {
 	int lrn_on;
 	int memwr_dst;
 	int num_bricks;
+	int num_sub_layers;
 } fpga_configuration;
 
 // Define the kernel names used
@@ -359,6 +360,16 @@ int main(int argc, char** argv)
 		int num_bricks_h = layer_config[layer][data_h]+2*layer_config[layer][conv_padding]-layer_config[layer][weight_h]+1;
 		int num_bricks_t = layer_config[layer][data_t]+2*layer_config[layer][conv_padding]-layer_config[layer][weight_t]+1;
 		config[layer].num_bricks = num_bricks_w * num_bricks_h * num_bricks_t;
+		// !@^ Convolution layer splitting starts
+		if(WEIGHT_BUF_SIZE < layer_config[layer][weight_h] * (layer_config[layer][weight_n] / VEC_SIZE) * layer_config[layer][weight_t]) {
+			// so the weight does not fit inside the weight memory on-chip, split the convolution layer into sub-layers
+			// max_sub_layer_channels is the maximum number of channels that can fit in weight buffer
+			int max_sub_layer_channels = (VEC_SIZE * WEIGHT_BUF_SIZE) / (layer_config[layer][weight_h] * layer_config[layer][weight_t]);
+			config[layer].num_sub_layers = (layer_config[layer][weight_n] - 1) / max_sub_layer_channels + 1;
+		}
+		else
+			config[layer].num_sub_layers = 1;
+		// !@$ Convolution layer splitting ends
 		printf ("[INFO] w_vec: %d\n", w_vec);
 		printf ("[INFO] data_w: %d\n", layer_config[layer][data_w]);
 		printf ("[INFO] data_h: %d\n", layer_config[layer][data_h]);
@@ -416,7 +427,13 @@ int main(int argc, char** argv)
 
 		// Setting the arguments for the memory read data module
 		argi = 0;
-		char config_size = LAYER_NUM;
+		char config_size = 0;
+		// !@^ start of config_size computation
+		// controller has two nested loops to iterate over layers and sub-layers respectively
+		// whereas memReadData, memReadWeight and memWrite see every sub-layer as a separate layer and hence the number of layers is calculated as
+		for(int layer = 0; layer < LAYER_NUM; layer++)
+			config_size += config[layer].num_sub_layers;
+		// !@$ end of config_size computation
 
 		printf ("[INFO] Setting kernel arguments for the memRdData\n");
 		status = clSetKernelArg(knl_memRdData, argi++, sizeof(cl_char), &config_size);

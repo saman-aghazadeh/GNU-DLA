@@ -21,12 +21,15 @@ void memReadWeight(
 		int weight_h = config.weight_h;
 		int weight_w = config.weight_w;
 		int weight_t = config.weight_t;
-		ushort num_plates = weight_t * weight_h * (weight_n/VEC_SIZE);
+		int split_weight_n = config.split_weight_n;
+		int split_weight_n_offset = config.split_weight_n_offset;
+		ushort num_plates = weight_t * weight_h * (split_weight_n/VEC_SIZE);
 
 		//if (i >= 13)
 		// 	printf ("[FPGA][memReadWeight][%d] weight_m=%d, weight_n=%d, weight_h=%d, weight_w=%d, num_plates=%d\n", i, weight_m, weight_n, weight_h, weight_w, num_plates);
 
-		uint offset = 0;
+		// assuming that the weight for every sub-layer is ordered sequentially one after the other
+		uint offset = split_weight_n_offset * weight_h * weight_t;
 
 		// We assume weight_m is divisible by LANE_NUM
 		for (ushort j = 0; j < weight_m/LANE_NUM; j++) {

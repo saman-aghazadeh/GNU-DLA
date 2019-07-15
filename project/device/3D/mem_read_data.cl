@@ -27,6 +27,8 @@ void memReadData(
 		int weight_h = config.weight_h;
 		int weight_w = config.weight_w;
 		int weight_n = config.weight_n;
+		int split_weight_n = config.split_weight_n;
+		int split_weight_n_offset = config.split_weight_n_offset;
 		int weight_t = config.weight_t;
 		int conv_padding = config.conv_padding;
 
@@ -35,7 +37,7 @@ void memReadData(
 		int data_t_with_padding = data_t + 2 * conv_padding;
 
 		//if (i >= 13)
-			// printf ("[FPGA][memReadData][%d] layer_type=%d, data_w=%d, data_h=%d, data_t=%d, weight_m=%d, weight_h=%d, weight_w=%d, weight_n=%d, weight_t=%d, conv_padding=%d, data_w_with_padding=%d, data_h_with_padding=%d\n", i, layer_type, data_w, data_h, data_t, weight_m, weight_h, weight_w, weight_n, weight_t, conv_padding, data_w_with_padding, data_h_with_padding);
+			printf ("[FPGA][memReadData][%d] layer_type=%d, data_w=%d, data_h=%d, data_t=%d, weight_m=%d, weight_h=%d, weight_w=%d, weight_n=%d, weight_t=%d, conv_padding=%d, data_w_with_padding=%d, data_h_with_padding=%d\n", i, layer_type, data_w, data_h, data_t, weight_m, weight_h, weight_w, weight_n, weight_t, conv_padding, data_w_with_padding, data_h_with_padding);
 
 		// It may seems strange, but it's memReadData responsibility, to let the 
 		// PE knows that it has to load a new set of weights.
@@ -43,7 +45,7 @@ void memReadData(
 		// TODO: We assume for now that weight_m is divisble by LANE_NUM
 		int out_channel_iter = weight_m / LANE_NUM;
 		//if (i >= 13)
-		//	printf ("[FPGA][memReadData][%d] out_channel_iter is %d\n", i, out_channel_iter);	
+			printf ("[FPGA][memReadData][%d] out_channel_iter is %d\n", i, out_channel_iter);	
 
 		for (int j = 0; j < out_channel_iter; j++) {
 	
@@ -69,10 +71,10 @@ void memReadData(
 				char feature_idx_x = brick_idx_x;
 				char feature_idx_y = brick_idx_y;
 				char feature_idx_t = brick_idx_t;
-				char feature_idx_z = 0;
+				char feature_idx_z = split_weight_n_offset;
 
 				// TODO: Here assume weight_n is divisible by VEC_SIZE
-				short num_plates = weight_h * (weight_n/VEC_SIZE) * weight_t;
+				short num_plates = weight_h * (split_weight_n/VEC_SIZE) * weight_t;
 
 				//if (i >= 13)
 				//	printf ("[FPGA][memReadData][%d] num_plates is %d\n", i, num_plates);
@@ -119,13 +121,13 @@ void memReadData(
 					// Alright data is sent, we have to move on to the next plate.
 					// That means, we have to update out feature indexes
 
-					if ((feature_idx_t == weight_t-1) && (feature_idx_z == weight_n/VEC_SIZE-1) && (feature_idx_y == weight_h-1)) {
+					if ((feature_idx_t == weight_t-1) && (feature_idx_z == split_weight_n/VEC_SIZE-1) && (feature_idx_y == weight_h-1)) {
 						feature_idx_t = 0;
-					} else if ((feature_idx_z == weight_n/VEC_SIZE-1) && (feature_idx_y == weight_h-1)) {
+					} else if ((feature_idx_z == split_weight_n/VEC_SIZE-1) && (feature_idx_y == weight_h-1)) {
 						feature_idx_t++;
 					}					
 
-					if ((feature_idx_z == weight_n/VEC_SIZE-1) && (feature_idx_y == weight_h-1)) {
+					if ((feature_idx_z == split_weight_n/VEC_SIZE-1) && (feature_idx_y == weight_h-1)) {
 						feature_idx_z = 0;
 					} else if (feature_idx_y == weight_h-1){
 						feature_idx_z++;

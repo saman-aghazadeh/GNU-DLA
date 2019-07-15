@@ -104,6 +104,7 @@ typedef struct {
 	int lrn_on; // lrn on/off control
 	int memwr_dst; // 0 -> data_buf, 1 -> output_buf, 2 -> fc_1_buffer, 3 -> fc_2_buffer
 	int num_bricks;
+	int num_sub_layers;
 } configuration;
 
 // required config for the memRdData
@@ -112,6 +113,8 @@ typedef struct {
 	int data_w, data_h, data_t;
 	int weight_m;
 	int weight_n;
+	int split_weight_n;
+	int split_weight_n_offset;
 	int weight_h;
 	int weight_w;
 	int weight_t;
@@ -122,6 +125,8 @@ typedef struct {
 typedef struct {
 	int weight_m;
 	int weight_n;
+	int split_weight_n;
+	int split_weight_n_offset;
 	int weight_h;
 	int weight_w;
 	int weight_t;
@@ -133,6 +138,7 @@ typedef struct {
 	int conv_y;
 	int conv_z;
 	int conv_t;
+	bool is_sum_layer_on;
 	int weight_w;
 } memwr_configuration;
 
