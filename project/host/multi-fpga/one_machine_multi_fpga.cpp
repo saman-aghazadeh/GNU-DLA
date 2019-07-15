@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
 	}
 
 	device.reset(getDevices (platform_id, DEVICE_TYPE, &num_devices));
-	if (num_device != 2) 
+	if (num_devices != 2) 
 		printf ("ERROR: there should be two devices installed on the system!\n");
 	printf("\nPlatform: %s\n", getPlatformName(platform_id).c_str());
 	printf("Using %d device(s)\n", num_devices);
@@ -117,5 +117,9 @@ int main(int argc, char** argv) {
 	checkError (status, "Failed to wait for the rx event!");
 
 	printf ("\nDone!\n");
+
+}
+
+void cleanup() {
 
 }
