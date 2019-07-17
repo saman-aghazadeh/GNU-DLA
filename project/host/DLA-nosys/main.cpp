@@ -72,11 +72,11 @@ const char *input_file_path = "./data/data_alex/image.dat";
 // VGG16
 // Original problem size
 // File size is in num of DTYPE numbers
-#define IMAGE_FILE_SIZE   (224*224*3)
+#define IMAGE_FILE_SIZE   (28*28*512)
 #define WEIGHTS_FILE_SIZE 324442112  //fc8-1024
 #define BIASES_FILE_SIZE  13440
-#define LAYER_NUM         14
-#define CONV_NUM          14
+#define LAYER_NUM         13
+#define CONV_NUM          13
 const char *weight_file_path = "./data/data_vgg16/weights.dat";
 const char *input_file_path = "./data/data_vgg16/image.dat";
 #endif

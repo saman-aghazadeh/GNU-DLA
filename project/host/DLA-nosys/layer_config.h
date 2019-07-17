@@ -726,7 +726,7 @@ char precision_config[][3] ={{7,  0, -2},//Layer-1
 							{ 8, -3, -2}//Layer-13
 				};
 
-unsigned input_config[4] = {224, 224, 3, 1};
+unsigned input_config[4] = {28, 28, 512, 1};
 
 //unsigned output_config[3] = {224, 224, 64};//Layer-1
 
