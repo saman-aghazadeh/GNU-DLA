@@ -2,6 +2,7 @@ __kernel
 __attribute__((max_global_work_dim(0)))
 void memReadWeight(
 			// Number of layers involved
+			char device_number,
 			char config_size,
 			// Params ports
 			__global lane_cols	*restrict weights,
@@ -9,7 +10,7 @@ void memReadWeight(
 
 {
 
-	// printf ("[FPGA][memReadWeight] Number of layers is %d\n", config_size);
+	//printf ("[FPGA][memReadWeight][DEV%d] Number of layers is %d\n", device_number, config_size);
 
 	uint layer_offset = 0;
 
@@ -23,14 +24,14 @@ void memReadWeight(
 		int weight_w = config.weight_w;
 		ushort num_plates = weight_h * (weight_n/VEC_SIZE);
 
-		// printf ("[FPGA][memReadWeight][%d] weight_m=%d, weight_n=%d, weight_h=%d, weight_w=%d, num_plates=%d\n", i, weight_m, weight_n, weight_h, weight_w, num_plates);
+		//printf ("[FPGA][memReadWeight][DEV%d][%d] weight_m=%d, weight_n=%d, weight_h=%d, weight_w=%d, num_plates=%d\n", device_number, i, weight_m, weight_n, weight_h, weight_w, num_plates);
 
 		uint offset = 0;
 
 		// We assume weight_m is divisible by LANE_NUM
 		for (ushort i = 0; i < weight_m/LANE_NUM; i++) {
 			
-			// printf ("[FPGA][memReadWeight] Processing output channel %d\n", i*LANE_NUM);
+			//printf ("[FPGA][memReadWeight][DEV%d] Processing output channel %d\n", device_number, i*LANE_NUM);
 
 			bias_DPTYPE bias_buffer;
 			// Reading LANE_NUM of biases and send them to their 
