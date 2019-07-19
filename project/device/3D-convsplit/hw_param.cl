@@ -76,7 +76,7 @@
 
 #ifdef C3D_TEST
 	#define WIN_BUF_SIZE		13824/VEC_SIZE
-	#define WEIGHT_BUF_SIZE		576
+	#define WEIGHT_BUF_SIZE		195
 #endif
 
 //#define WIN_BUF_SIZE        CONV_GP_SIZE_X*9216/VEC_SIZE  // for AlexNet  batch>=4

@@ -25,6 +25,7 @@ void memWrite(
 		int conv_z = config.conv_z;
 		int conv_t = config.conv_t;
 		int weight_w = config.weight_w;
+		bool is_sum_layer_on = config.is_sum_layer_on;
 		
 		int write_index = 0;
 
@@ -46,6 +47,19 @@ void memWrite(
 			//	printf ("[FPGA][memWrite][%d] start writing to memory!\n", i);
 			#pragma unroll
 			for (char w = 0; w < W_INV_VEC; w++) {
+				// !@^ start of sum_layer
+				if(is_sum_layer_on) {
+					channel_scal partial_result;
+					if (flag == 0x00)
+						partial_result = bottom0[write_index+w];
+					else
+						partial_result = bottom1[write_index+w];
+					#pragma unroll
+					for(int l = 0; l < LANE_NUM; l++) {
+						inv.cols[w].lane[l] += partial_result.lane[l];
+					}
+				}
+				// !@$ end of sum_layer
 
 				if (flag == 0x00)
 					bottom0[write_index+w] = inv.cols[w];

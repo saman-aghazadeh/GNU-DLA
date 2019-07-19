@@ -12,6 +12,7 @@ HOST_EXE_CHANNEL_MULTI_FPGA = run_channel_multi_fpga.exe
 HOST_EXE_DLA_NOSYS = run_dla_nosys.exe
 HOST_EXE_DLA_NOSYS_MULTI_FPGA = run_dla_nosys_multi_fpga.exe
 HOST_EXE_3D = run_3d.exe
+HOST_EXE_3D_CONVSPLIT = run_3d_convsplit.exe
 HOST_SRCS = ./host/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_V2 = ./host/main_v2.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_V3 = ./host/main_v3.cpp ../common/ocl_util.cpp ../common/timer.cpp
@@ -25,6 +26,7 @@ HOST_SRCS_CHANNEL_MULTI_FPGA = ./host/multi-fpga/channel/multi_fpga.cpp ../commo
 HOST_SRCS_DLA_NOSYS = ./host/DLA-nosys/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_DLA_NOSYS_MULTI_FPGA = ./host/DLA-nosys-multi-fpga/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_3D = ./host/3D/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
+HOST_SRCS_3D_CONVSPLIT = ./host/3D-convsplit/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 
 HOST_OBJS = $(HOST_SRCS:%.cpp=%.o)
 HOST_OBJS_V2 = $(HOST_SRCS_V2:%.cpp=%.o)
@@ -39,6 +41,7 @@ HOST_OBJS_CHANNEL_MULTI_FPGA = $(HOST_SRCS_CHANNEL_MULTI_FPGA:%.cpp=%.o)
 HOST_OBJS_DLA_NOSYS = $(HOST_SRCS_DLA_NOSYS:%.cpp=%.o)
 HOST_OBJS_DLA_NOSYS_MULTI_FPGA = $(HOST_SRCS_DLA_NOSYS_MULTI_FPGA:%.cpp=%.o)
 HOST_OBJS_3D = $(HOST_SRCS_3D:%.cpp=%.o)
+HOST_OBJS_3D_CONVSPLIT = $(HOST_SRCS_3D_CONVSPLIT:%.cpp=%.o)
 
 HOST_INCS = ../common
 HOST_DEBUG =
@@ -101,9 +104,9 @@ endif
 
 #select whether use OpenCV or not
 ifeq ($(USE_OPENCV),1)
-CXXFLAGS = -g -Wall -std=c++0x -DUSE_OPENCV #-DVERBOSE_OUTPUT
+CXXFLAGS = -g -Wall -std=c++0x -DUSE_OPENCV -L/home/tools/altera/18.1-pro/hld/linux64/lib/ -lalteracl #-DVERBOSE_OUTPUT
 else
-CXXFLAGS = -g -O0 -Wall -std=c++0x #-DVERBOSE_OUTPUT
+CXXFLAGS = -g -O0 -Wall -std=c++0x -L/home/tools/altera/18.1-pro/hld/host/linux64/lib/ -lalteracl #-DVERBOSE_OUTPUT
 endif
 
 #select whether manually launch free-run kernels
@@ -118,7 +121,7 @@ COMP_CONFIG = -I$(XILINX_SDX)/runtime/include/1_2 -I$(HOST_INCS)  -DFPGA_DEVICE 
 LINK_CONFIG = -L$(XILINX_SDX)/runtime/lib/x86_64 -lxilinxopencl
 else ifeq ($(VENDOR),altera)
 COMP_CONFIG = $(shell aocl compile-config) -I$(HOST_INCS)  -DFPGA_DEVICE -D$(MODEL)
-LINK_CONFIG = $(shell aocl link-config) -lrt
+LINK_CONFIG = $(shell aocl link-config) -L/home/tools/altera/18.1-pro/hld/host/linux64/lib/ -lalteracl -lrt
 else ifeq ($(VENDOR),amd)
 DEV_EXE =
 endif
@@ -150,7 +153,7 @@ OCC = aoc
 ifeq ($(FLOW),sw_emu)
 OCCFLAGS = -v --report -march=emulator -I device/RTL -I ${INTELFPGAOCLSDKROOT}/include/kernel_headers -L device/RTL -l rtl_lib.aoclib 
 else ifeq ($(FLOW),hw)
-OCCFLAGS = -v --report --profile -I device/RTL -I ${INTELFPGAOCLSDKROOT}/include/kernel_headers -L device/RTL -l rtl_lib.aoclib 
+OCCFLAGS = -v --report -I device/RTL -I ${INTELFPGAOCLSDKROOT}/include/kernel_headers -L device/RTL -l rtl_lib.aoclib 
 endif
 #amd
 else ifeq ($(VENDOR),amd)
@@ -169,17 +172,17 @@ all: host fpga
 .PHONY: host
 ifeq ($(FLOW),sw_emu)
 # host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CASCADE_EMU) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_CHANNEL_MULTI_FPGA) $(HOST_EXE_DLA_NOSYS) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA) $(HOST_EXE_3D)
-host: $(HOST_EXE_3D)
+host: $(HOST_EXE_3D) $(HOST_EXE_3D_CONVSPLIT)
 else
 # host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_DLA_NOSYS) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA) $(HOST_EXE_3D)
-host: $(HOST_EXE_3D)
+host: $(HOST_EXE_3D) $(HOST_EXE_3D_CONVSPLIT)
 endif
 
 .PHONY: fpga
 ifeq ($(FLOW),sw_emu)
 fpga: $(DEV_EXE) #$(DEV_EXE_CASCADE_EMU)
 else
-fpga: $(DEV_EXE) $(HOST_EXE_CHANNEL_MULTI_FPGA)
+fpga: $(DEV_EXE) #$(HOST_EXE_CHANNEL_MULTI_FPGA)
 endif
 
 $(HOST_EXE): $(HOST_OBJS)
@@ -219,6 +222,9 @@ $(HOST_EXE_DLA_NOSYS_MULTI_FPGA): $(HOST_OBJS_DLA_NOSYS_MULTI_FPGA)
 
 $(HOST_EXE_3D): $(HOST_OBJS_3D)
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_3D) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
+
+$(HOST_EXE_3D_CONVSPLIT): $(HOST_OBJS_3D_CONVSPLIT)
+	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_3D_CONVSPLIT) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
 
 %.o: %.cpp
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(CXXFLAGS) -c $< -o $@ $(COMP_CONFIG) $(OCV_LIBS)
