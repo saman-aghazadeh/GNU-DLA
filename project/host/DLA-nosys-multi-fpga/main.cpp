@@ -888,7 +888,7 @@ void* device_runner (void* args) {
 	cl_ulong controller_time;
 
 
-	for (int iter = 0; iter < 1; iter++) {
+	for (int iter = 0; iter < 4; iter++) {
 
 		if (i == 0)	
 			loadImageToBuffer(pic_num);
@@ -1025,7 +1025,8 @@ void* device_runner (void* args) {
 		status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_mem), top);
 		checkError(status, "Failed to set argument %d of kernel ser", argi-1);
 
-		printCurrentTime();
+		if (i == 0)
+			printCurrentTime();
 
 		// Enqueueing kernels
 		printf ("[INFO] Enqueuing tasks [controller,deser[if],memRdData,memRdWeight,memWrite,ser[if]] " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
@@ -1087,7 +1088,7 @@ void* device_runner (void* args) {
 			printf ("[INFO] Done with ser for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
 		}
 
-		printCurrentTime();
+		//printCurrentTime();
 
 		printf ("[INFO] Calculating kernel runtime for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
 		memRdData_time = getKernelStartEndTime(memRdData_event, "memRd");
