@@ -10,9 +10,11 @@ HOST_EXE_CHANNEL_TEST_RX = run_channel_test_rx.exe
 HOST_EXE_MAC_TEST = run_mac_test.exe
 HOST_EXE_CHANNEL_MULTI_FPGA = run_channel_multi_fpga.exe
 HOST_EXE_DLA_NOSYS = run_dla_nosys.exe
+HOST_EXE_DLA_NOSYS_FC = run_dla_nosys_fc.exe
 HOST_EXE_DLA_NOSYS_MULTI_FPGA = run_dla_nosys_multi_fpga.exe
 HOST_EXE_3D = run_3d.exe
 HOST_EXE_3D_CONVSPLIT = run_3d_convsplit.exe
+HOST_EXE_3D_ONCHIP = run_3d_onchip.exe
 HOST_SRCS = ./host/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_V2 = ./host/main_v2.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_V3 = ./host/main_v3.cpp ../common/ocl_util.cpp ../common/timer.cpp
@@ -24,9 +26,11 @@ HOST_SRCS_CHANNEL_TEST_RX = ./host/channel_test_main_rx.cpp ../common/ocl_util.c
 HOST_SRCS_MAC_TEST = ./host/multi-fpga/template_rxtx_ut.cpp ./host/multi-fpga/fpgaStreamDrv.cpp ../common/AOCLUtils/opencl.cpp ../common/AOCLUtils/options.cpp
 HOST_SRCS_CHANNEL_MULTI_FPGA = ./host/multi-fpga/channel/multi_fpga.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_DLA_NOSYS = ./host/DLA-nosys/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
+HOST_SRCS_DLA_NOSYS_FC = ./host/DLA-nosys-fc/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_DLA_NOSYS_MULTI_FPGA = ./host/DLA-nosys-multi-fpga/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_3D = ./host/3D/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_3D_CONVSPLIT = ./host/3D-convsplit/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
+HOST_SRCS_3D_ONCHIP = ./host/3D-onchip_readbuf/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 
 HOST_OBJS = $(HOST_SRCS:%.cpp=%.o)
 HOST_OBJS_V2 = $(HOST_SRCS_V2:%.cpp=%.o)
@@ -39,9 +43,11 @@ HOST_OBJS_CHANNEL_TEST_TX = $(HOST_SRCS_CHANNEL_TEST_TX:%.cpp=%.o)
 HOST_OBJS_CHANNEL_TEST_RX = $(HOST_SRCS_CHANNEL_TEST_RX:%.cpp=%.o)
 HOST_OBJS_CHANNEL_MULTI_FPGA = $(HOST_SRCS_CHANNEL_MULTI_FPGA:%.cpp=%.o)
 HOST_OBJS_DLA_NOSYS = $(HOST_SRCS_DLA_NOSYS:%.cpp=%.o)
+HOST_OBJS_DLA_NOSYS_FC = $(HOST_SRCS_DLA_NOSYS_FC:%.cpp=%.o)
 HOST_OBJS_DLA_NOSYS_MULTI_FPGA = $(HOST_SRCS_DLA_NOSYS_MULTI_FPGA:%.cpp=%.o)
 HOST_OBJS_3D = $(HOST_SRCS_3D:%.cpp=%.o)
 HOST_OBJS_3D_CONVSPLIT = $(HOST_SRCS_3D_CONVSPLIT:%.cpp=%.o)
+HOST_OBJS_3D_ONCHIP = $(HOST_SRCS_3D_ONCHIP:%.cpp=%.o)
 
 HOST_INCS = ../common
 HOST_DEBUG =
@@ -171,11 +177,11 @@ all: host fpga
 
 .PHONY: host
 ifeq ($(FLOW),sw_emu)
-# host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CASCADE_EMU) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_CHANNEL_MULTI_FPGA) $(HOST_EXE_DLA_NOSYS) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA) $(HOST_EXE_3D)
-host: $(HOST_EXE_3D) $(HOST_EXE_3D_CONVSPLIT)
+host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CASCADE_EMU) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_CHANNEL_MULTI_FPGA) $(HOST_EXE_DLA_NOSYS) $(HOST_EXE_DLA_NOSYS_FC) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA) $(HOST_EXE_3D)
+# host: $(HOST_EXE_3D) $(HOST_EXE_3D_CONVSPLIT) $(HOST_EXE_3D_ONCHIP)
 else
-# host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_DLA_NOSYS) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA) $(HOST_EXE_3D)
-host: $(HOST_EXE_3D) $(HOST_EXE_3D_CONVSPLIT)
+host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_DLA_NOSYS) $(HOST_EXE_DLA_NOSYS_FC) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA) $(HOST_EXE_3D)
+# host: $(HOST_EXE_3D) $(HOST_EXE_3D_CONVSPLIT) $(HOST_EXE_3D_ONCHIP)
 endif
 
 .PHONY: fpga
@@ -217,6 +223,9 @@ $(HOST_EXE_CHANNEL_MULTI_FPGA): $(HOST_OBJS_CHANNEL_MULTI_FPGA)
 $(HOST_EXE_DLA_NOSYS): $(HOST_OBJS_DLA_NOSYS)
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_DLA_NOSYS) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
 
+$(HOST_EXE_DLA_NOSYS_FC): $(HOST_OBJS_DLA_NOSYS_FC)
+	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_DLA_NOSYS_FC) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
+
 $(HOST_EXE_DLA_NOSYS_MULTI_FPGA): $(HOST_OBJS_DLA_NOSYS_MULTI_FPGA)
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_DLA_NOSYS_MULTI_FPGA) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
 
@@ -225,6 +234,9 @@ $(HOST_EXE_3D): $(HOST_OBJS_3D)
 
 $(HOST_EXE_3D_CONVSPLIT): $(HOST_OBJS_3D_CONVSPLIT)
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_3D_CONVSPLIT) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
+
+$(HOST_EXE_3D_ONCHIP): $(HOST_OBJS_3D_ONCHIP)
+	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_3D_ONCHIP) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
 
 %.o: %.cpp
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(CXXFLAGS) -c $< -o $@ $(COMP_CONFIG) $(OCV_LIBS)
