@@ -33,7 +33,8 @@ const char *knl_name_rx = "receiver";
 
 cl_uint num_devices = 0;
 cl_platform_id platform_id = NULL;
-cl_context context = NULL;
+cl_context context_tx = NULL;
+cl_context context_rx = NULL;
 cl_program program_tx = NULL;
 cl_program program_rx = NULL;
 
@@ -51,11 +52,13 @@ int main(int argc, char** argv) {
 	cl_event tx_event;
 	cl_event rx_event;
 
+	/*
 	if (argc != 4){
 		printf("Error: wrong commad format, usage:\n");
 		printf("%s <binaryfile>\n", argv[0]);
 		return -1;
 	}
+	*/
 
 	printf ("****************************\n");
 	printf ("Nallatech P385A Channel Test\n");
@@ -68,8 +71,8 @@ int main(int argc, char** argv) {
 	}
 
 	device.reset(getDevices (platform_id, DEVICE_TYPE, &num_devices));
-	if (num_devices != 2) 
-		printf ("ERROR: there should be two devices installed on the system!\n");
+	if (num_devices < 2) 
+		printf ("ERROR: there should be at least two devices installed on the system!\n");
 	printf("\nPlatform: %s\n", getPlatformName(platform_id).c_str());
 	printf("Using %d device(s)\n", num_devices);
 	for(unsigned i = 0; i < num_devices; ++i) {
@@ -78,25 +81,29 @@ int main(int argc, char** argv) {
 	}
 
 	// Create the context.
-	context = clCreateContext(NULL, num_devices, device, NULL, NULL, &status);
+	context_rx = clCreateContext(NULL, 1, &(device[0]), NULL, NULL, &status);
+	checkError(status, "Failed to create context");
+
+	context_tx = clCreateContext(NULL, 1, &(device[1]), NULL, NULL, &status);
 	checkError(status, "Failed to create context");
 	
-	type = atoi(argv[1]);
-	char* kernel_tx_file_name = argv[2];
-	char* kernel_rx_file_name = argv[3];
+	char* kernel_rxtx_file_name = argv[1];
 
+	/*
 	if (type != 1 && type != 2) {
 		printf ("ERROR: type should be either 1 or 2!\n");
 		return -1;
 	}
+	*/
 
-	program_tx = createProgramFromFile(context, (const char *) kernel_tx_file_name, &(device[0]), 1);
-	program_rx = createProgramFromFile(context, (const char *) kernel_rx_file_name, &(device[1]), 1);
+	program_rx = createProgramFromFile(context_rx, (const char *) kernel_rxtx_file_name, &(device[0]), 1);
+	printf ("Program RX created!\n");
+	program_tx = createProgramFromFile(context_tx, (const char *) kernel_rxtx_file_name, &(device[1]), 1);
+	printf ("Program TX created!\n");
 
-
-	que_tx = clCreateCommandQueue(context, device[0], CL_QUEUE_PROFILING_ENABLE, &status);
+	que_rx = clCreateCommandQueue(context_rx, device[0], CL_QUEUE_PROFILING_ENABLE, &status);
 	checkError (status, "Failed to create the tx command queue");
-	que_rx = clCreateCommandQueue(context, device[1], CL_QUEUE_PROFILING_ENABLE, &status);
+	que_tx = clCreateCommandQueue(context_tx, device[1], CL_QUEUE_PROFILING_ENABLE, &status);
 	checkError (status, "Failed to create the rx command queue");
 
 	tx_kernel = clCreateKernel (program_tx, "sender", &status);
@@ -137,7 +144,11 @@ void cleanup () {
 		clReleaseProgram(program_tx);
 	}
 
-	if (context) {
-		clReleaseContext(context);
+	if (context_tx) {
+		clReleaseContext(context_tx);
+	}
+
+	if (context_rx) {
+		clReleaseContext(context_rx);
 	}
 }
