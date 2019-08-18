@@ -190,7 +190,7 @@ int main(int argc, char** argv)
 
 	// Query the available OpenCL device
 	device = getDevices(platform_id, DEVICE_TYPE, &num_devices);
-	printf("\nPlatform: %s\n", getPlatformName(platform_id).c_str());
+	//printf("\nPlatform: %s\n", getPlatformName(platform_id).c_str());
 	printf("Using %d device(s)\n", num_devices);
 	for(unsigned i = 0; i < num_devices; ++i) {
 		printf("  Device %d: %s\n", i, getDeviceName(device[i]).c_str());

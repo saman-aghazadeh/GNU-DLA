@@ -72,7 +72,7 @@ const char *input_file_path = "./data/data_alex/image.dat";
 // VGG16
 // Original problem size
 // File size is in num of DTYPE numbers
-#define IMAGE_FILE_SIZE   (1*1*4096)
+#define IMAGE_FILE_SIZE   (7*7*512)
 #define WEIGHTS_FILE_SIZE 324442112  //fc8-1024
 #define BIASES_FILE_SIZE  13440
 #define LAYER_NUM         1

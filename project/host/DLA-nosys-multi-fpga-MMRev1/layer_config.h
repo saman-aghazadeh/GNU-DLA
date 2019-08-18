@@ -687,7 +687,7 @@ unsigned layer_config[][NUM_CONFIG_ITEM] = {{0,
 							1, 7, 7, 512, 2, 2,
 							0,
 							2},//Layer-13  (conv5_3)    Note: for last conv layer, outputs are write to fc buffer
-							{1,
+							{0,
 							7, 7, 512, 7, 7, 512, 4096, 4096,
 							2,
 							1, 1, 4096, 7, 0, 0, 1,

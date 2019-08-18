@@ -409,44 +409,60 @@ int main(int argc, char** argv)
 		for (int layer = 0; layer < layers_per_device[i]+1; layer++) {
 
 			//printf ("[INFO] Working on the layer #%d\n", layer);
-			fpga_config[layer].layer_type = layer_config[assigned_layers[i][0]+layer][layer_type];
+			fpga_config[layer].layer_type = layer_config[assigned_layers[i][0]+layer-1][layer_type];
 			
-			//printf ("[INFO] Layer type is %d\n", layer_config[assigned_layers[i][0]+layer][layer_type]);
-			fpga_config[layer].data_w = layer_config[assigned_layers[i][0]+layer][data_w];
-			fpga_config[layer].data_h = layer_config[assigned_layers[i][0]+layer][data_h];
-			fpga_config[layer].weight_w = layer_config[assigned_layers[i][0]+layer][weight_w];
-			fpga_config[layer].weight_h = layer_config[assigned_layers[i][0]+layer][weight_h];
-			fpga_config[layer].weight_n = layer_config[assigned_layers[i][0]+layer][weight_n];
-			fpga_config[layer].weight_m = layer_config[assigned_layers[i][0]+layer][weight_m];
-			fpga_config[layer].memrd_src = layer_config[assigned_layers[i][0]+layer][memrd_src];
-			fpga_config[layer].conv_x = layer_config[assigned_layers[i][0]+layer][conv_x];
-			fpga_config[layer].conv_y = layer_config[assigned_layers[i][0]+layer][conv_y];
-			fpga_config[layer].conv_z = layer_config[assigned_layers[i][0]+layer][conv_z];
-			fpga_config[layer].conv_stride = layer_config[assigned_layers[i][0]+layer][conv_stride];
-			fpga_config[layer].conv_padding = layer_config[assigned_layers[i][0]+layer][conv_padding];
-			fpga_config[layer].conv_split = layer_config[assigned_layers[i][0]+layer][conv_split];
-			fpga_config[layer].conv_relu = layer_config[assigned_layers[i][0]+layer][conv_relu];
-			fpga_config[layer].pool_on = layer_config[assigned_layers[i][0]+layer][pool_on];
-			fpga_config[layer].pool_x = layer_config[assigned_layers[i][0]+layer][pool_x];
-			fpga_config[layer].pool_y = layer_config[assigned_layers[i][0]+layer][pool_y];
-			fpga_config[layer].pool_z = layer_config[assigned_layers[i][0]+layer][pool_z];
-			fpga_config[layer].pool_size = layer_config[assigned_layers[i][0]+layer][pool_size];
-			fpga_config[layer].conv_stride = layer_config[assigned_layers[i][0]+layer][pool_stride];
-			fpga_config[layer].lrn_on = layer_config[assigned_layers[i][0]+layer][lrn_on];
-			fpga_config[layer].memwr_dst = layer_config[assigned_layers[i][0]+layer][memwr_dst];
+			printf ("[INFO] Layer type is %d\n", layer_config[assigned_layers[i][0]+layer-1][layer_type]);
+			if (fpga_config[layer].layer_type == 0){
+				fpga_config[layer].data_w = layer_config[assigned_layers[i][0]+layer-1][data_w];
+				fpga_config[layer].data_h = layer_config[assigned_layers[i][0]+layer-1][data_h];
+			} else {
+				fpga_config[layer].data_w = W_VEC;
+				fpga_config[layer].data_h = layer_config[assigned_layers[i][0]+layer-1][data_h];
+			}
+			if (fpga_config[layer].layer_type == 0) {
+				fpga_config[layer].weight_w = layer_config[assigned_layers[i][0]+layer-1][weight_w];
+				fpga_config[layer].weight_h = layer_config[assigned_layers[i][0]+layer-1][weight_h];
+			} else {
+				fpga_config[layer].weight_w = W_VEC;
+				fpga_config[layer].weight_h = layer_config[assigned_layers[i][0]+layer-1][weight_h];
+			}
+			if (fpga_config[layer].layer_type == 0) {
+				fpga_config[layer].weight_n = layer_config[assigned_layers[i][0]+layer-1][weight_n];
+				fpga_config[layer].weight_m = layer_config[assigned_layers[i][0]+layer-1][weight_m];
+			} else {
+				fpga_config[layer].weight_n = layer_config[assigned_layers[i][0]+layer-1][weight_n] / W_VEC + 1;
+				fpga_config[layer].weight_m = layer_config[assigned_layers[i][0]+layer-1][weight_m];
+			}
+			fpga_config[layer].memrd_src = layer_config[assigned_layers[i][0]+layer-1][memrd_src];
+			fpga_config[layer].conv_x = layer_config[assigned_layers[i][0]+layer-1][conv_x];
+			fpga_config[layer].conv_y = layer_config[assigned_layers[i][0]+layer-1][conv_y];
+			fpga_config[layer].conv_z = layer_config[assigned_layers[i][0]+layer-1][conv_z];
+			fpga_config[layer].conv_stride = layer_config[assigned_layers[i][0]+layer-1][conv_stride];
+			fpga_config[layer].conv_padding = layer_config[assigned_layers[i][0]+layer-1][conv_padding];
+			fpga_config[layer].conv_split = layer_config[assigned_layers[i][0]+layer-1][conv_split];
+			fpga_config[layer].conv_relu = layer_config[assigned_layers[i][0]+layer-1][conv_relu];
+			fpga_config[layer].pool_on = layer_config[assigned_layers[i][0]+layer-1][pool_on];
+			fpga_config[layer].pool_x = layer_config[assigned_layers[i][0]+layer-1][pool_x];
+			fpga_config[layer].pool_y = layer_config[assigned_layers[i][0]+layer-1][pool_y];
+			fpga_config[layer].pool_z = layer_config[assigned_layers[i][0]+layer-1][pool_z];
+			fpga_config[layer].pool_size = layer_config[assigned_layers[i][0]+layer-1][pool_size];
+			fpga_config[layer].conv_stride = layer_config[assigned_layers[i][0]+layer-1][pool_stride];
+			fpga_config[layer].lrn_on = layer_config[assigned_layers[i][0]+layer-1][lrn_on];
+			fpga_config[layer].memwr_dst = layer_config[assigned_layers[i][0]+layer-1][memwr_dst];
 
 			//printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "layer_type: %d, data_w: %d, data_h: %d, weight_w: %d, weight_h: %d, weight_n: %d, weight_m: %d, memrd_src: %d, conv_x: %d, conv_y: %d, conv_z: %d, conv_stride: %d, conv_padding: %d, conv_split: %d, conv_relu: %d, pool_on: %d, pool_x: %d, pool_y: %d, pool_z: %d, pool_size: %d, conv_stride: %d, lrn_on: %d, memwr_dst: %d\n", i, layer_config[assigned_layers[i][0]+layer][layer_type], layer_config[assigned_layers[i][0]+layer][data_w], layer_config[assigned_layers[i][0]+layer][data_h], layer_config[assigned_layers[i][0]+layer][weight_w], layer_config[assigned_layers[i][0]+layer][weight_h], layer_config[assigned_layers[i][0]+layer][weight_n], layer_config[assigned_layers[i][0]+layer][weight_m], layer_config[assigned_layers[i][0]+layer][memrd_src], layer_config[assigned_layers[i][0]+layer][conv_x], layer_config[assigned_layers[i][0]+layer][conv_y], layer_config[assigned_layers[i][0]+layer][conv_z], layer_config[assigned_layers[i][0]+layer][conv_stride], layer_config[assigned_layers[i][0]+layer][conv_padding], layer_config[assigned_layers[i][0]+layer][conv_split], layer_config[assigned_layers[i][0]+layer][conv_relu], layer_config[assigned_layers[i][0]+layer][pool_on], layer_config[assigned_layers[i][0]+layer][pool_x], layer_config[assigned_layers[i][0]+layer][pool_y], layer_config[assigned_layers[i][0]+layer][pool_z], layer_config[assigned_layers[i][0]+layer][pool_size], layer_config[assigned_layers[i][0]+layer][pool_stride], layer_config[assigned_layers[i][0]+layer][lrn_on], layer_config[assigned_layers[i][0]+layer][memwr_dst]);
 		
 			int w_vec = W_VEC;
-			fpga_config[layer].num_bricks = (layer_config[assigned_layers[i][0]+layer][data_h]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_h]+1)*((layer_config[assigned_layers[i][0]+layer][data_w]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_w])/(W_VEC-layer_config[assigned_layers[i][0]+layer][weight_w]+1) + 1);
+			fpga_config[layer].num_bricks = (layer_config[assigned_layers[i][0]+layer-1][data_h]+2*layer_config[assigned_layers[i][0]+layer-1][conv_padding]-layer_config[assigned_layers[i][0]+layer-1][weight_h]+1)*((layer_config[assigned_layers[i][0]+layer-1][data_w]+2*layer_config[assigned_layers[i][0]+layer-1][conv_padding]-layer_config[assigned_layers[i][0]+layer-1][weight_w])/(W_VEC-layer_config[assigned_layers[i][0]+layer-1][weight_w]+1) + 1);
 
 			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "conv_x=%d, conv_y=%d, conv_z=%d\n", i, fpga_config[layer].conv_x, fpga_config[layer].conv_y, fpga_config[layer].conv_z);
 
 			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "w_vec: %d\n", i, w_vec);
-			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "data_w: %d\n", i, layer_config[assigned_layers[i][0]+layer][data_w]);
-			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "data_h: %d\n", i, layer_config[assigned_layers[i][0]+layer][data_h]);
-			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "conv_padding: %d\n", i, layer_config[assigned_layers[i][0]+layer][conv_padding]);
-			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "weight_w: %d\n", i, layer_config[assigned_layers[i][0]+layer][weight_w]);	
+			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "data_w: %d\n", i, layer_config[assigned_layers[i][0]+layer-1][data_w]);
+			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "data_h: %d\n", i, layer_config[assigned_layers[i][0]+layer-1][data_h]);
+			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "conv_padding: %d\n", i, layer_config[assigned_layers[i][0]+layer-1][conv_padding]);
+			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "weight_w: %d\n", i, layer_config[assigned_layers[i][0]+layer-1][weight_w]);
+			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "data_w: %d, data_h: %d, weight_w: %d, weight_h: %d, weight_n: %d, weight_m: %d\n", i, fpga_config[layer].data_w, fpga_config[layer].data_h, fpga_config[layer].weight_w, fpga_config[layer].weight_h, fpga_config[layer].weight_n, fpga_config[layer].weight_m);
 			//printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "Some #1: %d\n", i, layer_config[layer][data_h]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_h]+1);
 			//printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "first part: %d\n", i, (layer_config[assigned_layers[i][0]+layer][data_w]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_w]));
 			//printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "second part: %d\n", i, (w_vec-layer_config[assigned_layers[i][0]+layer][weight_w]+1));

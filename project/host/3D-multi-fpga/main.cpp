@@ -230,6 +230,7 @@ int main(int argc, char** argv)
 
 	// Query the available OpenCL device
 	device.reset(getDevices(platform_id, DEVICE_TYPE, &num_devices));
+	num_devices = 2;
 	printf("\nPlatform: %s\n", getPlatformName(platform_id).c_str());
 	printf("Using %d device(s)\n", num_devices);
 	for(unsigned i = 0; i < num_devices; ++i) {
@@ -245,18 +246,18 @@ int main(int argc, char** argv)
 	}
 
 	// Create the context.
-	context[0] = clCreateContext(NULL, 1, &(device[0]), NULL, NULL, &status);
+	context[0] = clCreateContext(NULL, 1, &(device[1]), NULL, NULL, &status);
 	checkError(status, "Failed to create context");
 	
-	context[1] = clCreateContext(NULL, 1, &(device[1]), NULL, NULL, &status);
+	context[1] = clCreateContext(NULL, 1, &(device[0]), NULL, NULL, &status);
 	checkError(status, "Failed to create context");
 
 	// Create Program Objects
 	char *kernel_file_name=argv[1];
 
 	// Create the program for all device. All devices execute the same kernel.
-	program[0] = createProgramFromFile(context[0], (const char *) kernel_file_name, &(device[0]), 1);
-	program[1] = createProgramFromFile(context[1], (const char *) kernel_file_name, &(device[1]), 1);
+	program[0] = createProgramFromFile(context[0], (const char *) kernel_file_name, &(device[1]), 1);
+	program[1] = createProgramFromFile(context[1], (const char *) kernel_file_name, &(device[0]), 1);
 
 	// Extracting the layer segmentations	
 	assigned_layers.reset(num_devices);
@@ -283,6 +284,8 @@ int main(int argc, char** argv)
 
 	// Prepare compute data
 	status = prepare();
+	
+	printf ("After prepare!\n");
 	if(status == 1) {
 		printf("Allocate memory for data and weights failed !!!\n");
 		return false;
@@ -320,13 +323,13 @@ int main(int argc, char** argv)
 	// Command queue	
 	for (int i = 0; i < num_devices; i++) {
 		printf ("[INFO] Creating the command queues for the " ANSI_COLOR_RED "Device %d " ANSI_COLOR_RESET "\n", i);
-		que_memRdData[i] = clCreateCommandQueue(context[i], device[i], CL_QUEUE_PROFILING_ENABLE, &status);
+		que_memRdData[i] = clCreateCommandQueue(context[i], device[(!(i)&1)], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue for memReadData");
-		que_memRdWeight[i] = clCreateCommandQueue(context[i], device[i], CL_QUEUE_PROFILING_ENABLE, &status);
+		que_memRdWeight[i] = clCreateCommandQueue(context[i], device[(!(i)&1)], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue for memRdWeight");
-		que_controller[i] = clCreateCommandQueue(context[i], device[i], CL_QUEUE_PROFILING_ENABLE, &status);
+		que_controller[i] = clCreateCommandQueue(context[i], device[(!(i)&1)], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue for controller");
-		que_memWrite[i] = clCreateCommandQueue(context[i], device[i], CL_QUEUE_PROFILING_ENABLE, &status);
+		que_memWrite[i] = clCreateCommandQueue(context[i], device[(!(i)&1)], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue for memWrite");
 
 		// Kernel
@@ -420,37 +423,37 @@ int main(int argc, char** argv)
 		for (int layer = 0; layer < layers_per_device[i]+1; layer++) {
 
 			//printf ("[INFO] Working on the layer #%d\n", layer);
-			fpga_config[layer].layer_type = layer_config[assigned_layers[i][0]+layer][layer_type];
+			fpga_config[layer].layer_type = layer_config[assigned_layers[i][0]+layer-1][layer_type];
 			
 			//printf ("[INFO] Layer type is %d\n", layer_config[assigned_layers[i][0]+layer][layer_type]);
-			fpga_config[layer].data_w = layer_config[assigned_layers[i][0]+layer][data_w];
-			fpga_config[layer].data_h = layer_config[assigned_layers[i][0]+layer][data_h];
-			fpga_config[layer].data_t = layer_config[assigned_layers[i][0]+layer][data_t];
-			fpga_config[layer].weight_w = layer_config[assigned_layers[i][0]+layer][weight_w];
-			fpga_config[layer].weight_h = layer_config[assigned_layers[i][0]+layer][weight_h];
-			fpga_config[layer].weight_n = layer_config[assigned_layers[i][0]+layer][weight_n];
-			fpga_config[layer].weight_t = layer_config[assigned_layers[i][0]+layer][weight_t];
-			fpga_config[layer].weight_m = layer_config[assigned_layers[i][0]+layer][weight_m];
-			fpga_config[layer].memrd_src = layer_config[assigned_layers[i][0]+layer][memrd_src];
-			fpga_config[layer].conv_x = layer_config[assigned_layers[i][0]+layer][conv_x];
-			fpga_config[layer].conv_y = layer_config[assigned_layers[i][0]+layer][conv_y];
-			fpga_config[layer].conv_z = layer_config[assigned_layers[i][0]+layer][conv_z];
-			fpga_config[layer].conv_t = layer_config[assigned_layers[i][0]+layer][conv_t];
-			fpga_config[layer].conv_stride = layer_config[assigned_layers[i][0]+layer][conv_stride];
-			fpga_config[layer].conv_padding = layer_config[assigned_layers[i][0]+layer][conv_padding];
-			fpga_config[layer].conv_split = layer_config[assigned_layers[i][0]+layer][conv_split];
-			fpga_config[layer].conv_relu = layer_config[assigned_layers[i][0]+layer][conv_relu];
-			fpga_config[layer].pool_on = layer_config[assigned_layers[i][0]+layer][pool_on];
-			fpga_config[layer].pool_x = layer_config[assigned_layers[i][0]+layer][pool_x];
-			fpga_config[layer].pool_y = layer_config[assigned_layers[i][0]+layer][pool_y];
-			fpga_config[layer].pool_z = layer_config[assigned_layers[i][0]+layer][pool_z];
-			fpga_config[layer].pool_t = layer_config[assigned_layers[i][0]+layer][pool_t];
-			fpga_config[layer].pool_size_xy = layer_config[assigned_layers[i][0]+layer][pool_size_xy];
-			fpga_config[layer].pool_size_t = layer_config[assigned_layers[i][0]+layer][pool_size_t];
-			fpga_config[layer].pool_stride_xy = layer_config[assigned_layers[i][0]+layer][pool_size_xy];
-			fpga_config[layer].pool_stride_t = layer_config[assigned_layers[i][0]+layer][pool_size_t];
-			fpga_config[layer].lrn_on = layer_config[assigned_layers[i][0]+layer][lrn_on];
-			fpga_config[layer].memwr_dst = layer_config[assigned_layers[i][0]+layer][memwr_dst];
+			fpga_config[layer].data_w = layer_config[assigned_layers[i][0]+layer-1][data_w];
+			fpga_config[layer].data_h = layer_config[assigned_layers[i][0]+layer-1][data_h];
+			fpga_config[layer].data_t = layer_config[assigned_layers[i][0]+layer-1][data_t];
+			fpga_config[layer].weight_w = layer_config[assigned_layers[i][0]+layer-1][weight_w];
+			fpga_config[layer].weight_h = layer_config[assigned_layers[i][0]+layer-1][weight_h];
+			fpga_config[layer].weight_n = layer_config[assigned_layers[i][0]+layer-1][weight_n];
+			fpga_config[layer].weight_t = layer_config[assigned_layers[i][0]+layer-1][weight_t];
+			fpga_config[layer].weight_m = layer_config[assigned_layers[i][0]+layer-1][weight_m];
+			fpga_config[layer].memrd_src = layer_config[assigned_layers[i][0]+layer-1][memrd_src];
+			fpga_config[layer].conv_x = layer_config[assigned_layers[i][0]+layer-1][conv_x];
+			fpga_config[layer].conv_y = layer_config[assigned_layers[i][0]+layer-1][conv_y];
+			fpga_config[layer].conv_z = layer_config[assigned_layers[i][0]+layer-1][conv_z];
+			fpga_config[layer].conv_t = layer_config[assigned_layers[i][0]+layer-1][conv_t];
+			fpga_config[layer].conv_stride = layer_config[assigned_layers[i][0]+layer-1][conv_stride];
+			fpga_config[layer].conv_padding = layer_config[assigned_layers[i][0]+layer-1][conv_padding];
+			fpga_config[layer].conv_split = layer_config[assigned_layers[i][0]+layer-1][conv_split];
+			fpga_config[layer].conv_relu = layer_config[assigned_layers[i][0]+layer-1][conv_relu];
+			fpga_config[layer].pool_on = layer_config[assigned_layers[i][0]+layer-1][pool_on];
+			fpga_config[layer].pool_x = layer_config[assigned_layers[i][0]+layer-1][pool_x];
+			fpga_config[layer].pool_y = layer_config[assigned_layers[i][0]+layer-1][pool_y];
+			fpga_config[layer].pool_z = layer_config[assigned_layers[i][0]+layer-1][pool_z];
+			fpga_config[layer].pool_t = layer_config[assigned_layers[i][0]+layer-1][pool_t];
+			fpga_config[layer].pool_size_xy = layer_config[assigned_layers[i][0]+layer-1][pool_size_xy];
+			fpga_config[layer].pool_size_t = layer_config[assigned_layers[i][0]+layer-1][pool_size_t];
+			fpga_config[layer].pool_stride_xy = layer_config[assigned_layers[i][0]+layer-1][pool_size_xy];
+			fpga_config[layer].pool_stride_t = layer_config[assigned_layers[i][0]+layer-1][pool_size_t];
+			fpga_config[layer].lrn_on = layer_config[assigned_layers[i][0]+layer-1][lrn_on];
+			fpga_config[layer].memwr_dst = layer_config[assigned_layers[i][0]+layer-1][memwr_dst];
 
 			//printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "layer_type: %d, data_w: %d, data_h: %d, weight_w: %d, weight_h: %d, weight_n: %d, weight_m: %d, memrd_src: %d, conv_x: %d, conv_y: %d, conv_z: %d, conv_stride: %d, conv_padding: %d, conv_split: %d, conv_relu: %d, pool_on: %d, pool_x: %d, pool_y: %d, pool_z: %d, pool_size: %d, conv_stride: %d, lrn_on: %d, memwr_dst: %d\n", i, layer_config[assigned_layers[i][0]+layer][layer_type], layer_config[assigned_layers[i][0]+layer][data_w], layer_config[assigned_layers[i][0]+layer][data_h], layer_config[assigned_layers[i][0]+layer][weight_w], layer_config[assigned_layers[i][0]+layer][weight_h], layer_config[assigned_layers[i][0]+layer][weight_n], layer_config[assigned_layers[i][0]+layer][weight_m], layer_config[assigned_layers[i][0]+layer][memrd_src], layer_config[assigned_layers[i][0]+layer][conv_x], layer_config[assigned_layers[i][0]+layer][conv_y], layer_config[assigned_layers[i][0]+layer][conv_z], layer_config[assigned_layers[i][0]+layer][conv_stride], layer_config[assigned_layers[i][0]+layer][conv_padding], layer_config[assigned_layers[i][0]+layer][conv_split], layer_config[assigned_layers[i][0]+layer][conv_relu], layer_config[assigned_layers[i][0]+layer][pool_on], layer_config[assigned_layers[i][0]+layer][pool_x], layer_config[assigned_layers[i][0]+layer][pool_y], layer_config[assigned_layers[i][0]+layer][pool_z], layer_config[assigned_layers[i][0]+layer][pool_size], layer_config[assigned_layers[i][0]+layer][pool_stride], layer_config[assigned_layers[i][0]+layer][lrn_on], layer_config[assigned_layers[i][0]+layer][memwr_dst]);
 		
@@ -459,17 +462,17 @@ int main(int argc, char** argv)
 
 		
 			int w_vec = W_VEC;
-			int num_bricks_w = (layer_config[layer][data_w]+2*layer_config[layer][conv_padding]-layer_config[layer][weight_w])/(W_VEC-layer_config[layer][weight_w]+1) + 1;
-			int num_bricks_h = layer_config[layer][data_h]+2*layer_config[layer][conv_padding]-layer_config[layer][weight_h]+1;
-			int num_bricks_t = layer_config[layer][data_t]+2*layer_config[layer][conv_padding]-layer_config[layer][weight_t]+1;
+			int num_bricks_w = (fpga_config[layer].data_w+2*fpga_config[layer].conv_padding-fpga_config[layer].weight_w)/(W_VEC-fpga_config[layer].weight_w+1) + 1;
+			int num_bricks_h = fpga_config[layer].data_h+2*fpga_config[layer].conv_padding-fpga_config[layer].weight_h+1;
+			int num_bricks_t = fpga_config[layer].data_t+2*fpga_config[layer].conv_padding-fpga_config[layer].weight_t+1;
 			fpga_config[layer].num_bricks = num_bricks_w * num_bricks_h * num_bricks_t;
 			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "conv_x=%d, conv_y=%d, conv_z=%d\n", i, fpga_config[layer].conv_x, fpga_config[layer].conv_y, fpga_config[layer].conv_z);
 
 			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "w_vec: %d\n", i, w_vec);
-			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "data_w: %d\n", i, layer_config[assigned_layers[i][0]+layer][data_w]);
-			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "data_h: %d\n", i, layer_config[assigned_layers[i][0]+layer][data_h]);
-			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "conv_padding: %d\n", i, layer_config[assigned_layers[i][0]+layer][conv_padding]);
-			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "weight_w: %d\n", i, layer_config[assigned_layers[i][0]+layer][weight_w]);	
+			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "data_w: %d\n", i, fpga_config[layer].data_w);
+			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "data_h: %d\n", i, fpga_config[layer].data_h);
+			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "conv_padding: %d\n", i, fpga_config[layer].conv_padding);
+			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "weight_w: %d\n", i, fpga_config[layer].weight_w);	
 			//printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "Some #1: %d\n", i, layer_config[layer][data_h]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_h]+1);
 			//printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "first part: %d\n", i, (layer_config[assigned_layers[i][0]+layer][data_w]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_w]));
 			//printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "second part: %d\n", i, (w_vec-layer_config[assigned_layers[i][0]+layer][weight_w]+1));
@@ -579,14 +582,13 @@ void loadImageToBuffer(int num)
 #endif
 }
 
-
 // Read all input data and golden ref data
 int prepare()
 {
 
 	// Load Image data, CNN net weights and golden_results
-    ifstream bin_file_r;
-    unsigned file_size;
+ 	ifstream bin_file_r;
+	unsigned file_size;
 
 	unsigned char  conv_win_size_dim1, conv_win_size_dim2;
 
@@ -604,11 +606,12 @@ int prepare()
 		if(layer_config[ll][weight_m]%LANE_NUM != 0){
 			printf("\nWarnning: layer-%d requires padding zero-value feature maps for give param LANE_NUM=%d\n", ll+1, LANE_NUM);
 			layer_config[ll][weight_m] = ceil((float)layer_config[ll][weight_m]/LANE_NUM)*LANE_NUM;
-			layer_config[ll][bias_size] = layer_config[ll][weight_m];
+ 	      		layer_config[ll][bias_size] = layer_config[ll][weight_m];
 			printf("      original num of feature maps is %d, new value is %d\n", layer_config_original[ll][weight_m], layer_config[ll][weight_m]);
-
+			
 			// padding of weight on dim4 is needed
 			padding_offset[ll] = layer_config[ll][weight_m] - layer_config_original[ll][weight_m];
+
 			// check if evenly padding on two sides is possible
 			if(((layer_config[ll][weight_m]/LANE_NUM)%2!=0) & (layer_config[ll][conv_split]==1)){
 				printf("Error: could not perform padding for split mode, weight_m/LANE_NUM must be divisible by 2 !!!\n\n");
@@ -627,10 +630,10 @@ int prepare()
 		// Check parameters
 		if(ll==0){ // check parameters for layer-1
 			if(input_config[image_w] != layer_config_original[ll][data_w] ||  input_config[image_h] != layer_config_original[ll][data_h]
-				|| input_config[image_n] != layer_config_original[ll][data_n] || input_config[image_n] != layer_config_original[ll][weight_n]){
+				|| input_config[image_n] != layer_config_original[ll][data_n] || input_config[image_t] != layer_config_original[ll][data_t]){
 					printf("Error: incorrect layer configuration for layer-%d !!!\n", ll+1);
-					//return 1;
-				}
+					//return;
+			}
 
 			if((layer_config_original[ll][weight_n]!=input_config[image_n])){
 				printf("\nError: incorrect layer configuration for layer-%d !!!\n", ll+1);
@@ -639,30 +642,30 @@ int prepare()
 
 		}
 		else{ // other layers
-
 			// Currently weight_n must be divisible by VEC_SIZE (for first layer, padding is performed when weight_n is not divisible by VEC_SIZE)
 			if((layer_config[ll][weight_n]%VEC_SIZE)!=0){
 				printf("\nError: incorrect setting of parameter VEC_SIZE !!!\n");
-				return 1;
+				//return 1;
 			}
 			if((layer_config_original[ll][data_n]!=layer_config_original[ll-1][conv_z])){
 				printf("\nError: incorrect setting of convolution input/output size for layer-%d!!!\n", ll+1);
-				return 1;
+				//return 1;
 			}
 		}
 		if((layer_config_original[ll][conv_x]!=(layer_config_original[ll][data_w]-layer_config_original[ll][weight_w]+2*layer_config_original[ll][conv_padding])/layer_config_original[ll][conv_stride]+1)
 			|| (layer_config_original[ll][conv_y]!=(layer_config_original[ll][data_h]-layer_config_original[ll][weight_h]+2*layer_config_original[ll][conv_padding])/layer_config_original[ll][conv_stride]+1)
-		    || (layer_config_original[ll][conv_z]!=layer_config_original[ll][weight_m])){
-			printf("\nError: incorrect setting of convolution output size or filter params for layer-%d!!!\n", ll+1);
-			return 1;
+			|| (layer_config_original[ll][conv_t]!=(layer_config_original[ll][data_t]-layer_config_original[ll][weight_t]+2*layer_config_original[ll][conv_padding])/layer_config_original[ll][conv_stride]+1)
+			|| (layer_config_original[ll][conv_z]!=layer_config_original[ll][weight_m])){
+				printf("\nError: incorrect setting of convolution output size or filter params for layer-%d!!!\n", ll+1);
+				//return 1;
 		}
-		//if(layer_config_original[ll][pool_on] && ((layer_config_original[ll][pool_x]!=(layer_config_original[ll][conv_x]-layer_config_original[ll][pool_size])/layer_config_original[ll][pool_stride]+1)
-		//	|| (layer_config_original[ll][pool_y]!=(layer_config_original[ll][conv_y]-layer_config_original[ll][pool_size])/layer_config_original[ll][pool_stride]+1)
-		//    || (layer_config_original[ll][pool_z]!=layer_config_original[ll][conv_z]))){
-		//	printf("\nError: incorrect setting of pooling input/output size for layer-%d!!!\n", ll+1);
-		//	return 1;
-		//}
-
+		if(layer_config_original[ll][pool_on] && ((layer_config_original[ll][pool_x]!=(layer_config_original[ll][conv_x]-layer_config_original[ll][pool_size_xy])/layer_config_original[ll][pool_stride_xy]+1)
+			|| (layer_config_original[ll][pool_y]!=(layer_config_original[ll][conv_y]-layer_config_original[ll][pool_size_xy])/layer_config_original[ll][pool_stride_xy]+1)
+			|| (layer_config_original[ll][pool_t]!=(layer_config_original[ll][conv_t]-layer_config_original[ll][pool_size_t])/layer_config_original[ll][pool_stride_t]+1)
+			|| (layer_config_original[ll][pool_z]!=layer_config_original[ll][conv_z]))){
+				printf("\nError: incorrect setting of pooling input/output size for layer-%d!!!\n", ll+1);
+				//return 1;
+		}
 		if(layer_config[ll][conv_x]==1){ // when only one group for FC layer
 			conv_win_size_dim1  = layer_config[ll][weight_w];
 		}
@@ -673,18 +676,15 @@ int prepare()
 		// check win_buffer size
 		/*
 		if(conv_win_size_dim1*conv_win_size_dim2*layer_config[ll][weight_n]/VEC_SIZE > WIN_BUF_SIZE){
-
 			printf("Error: required win_buffer size is %d, configured size is %d, because win_size_dim1=%d and win_size_dim2=%d and weight_n=%d\n", conv_win_size_dim1*conv_win_size_dim2*layer_config[ll][weight_n]/VEC_SIZE, WIN_BUF_SIZE, conv_win_size_dim1, conv_win_size_dim2, layer_config[ll][weight_n]);
 			return 1;
 		}
 		// check weight_buffer size
 		if(layer_config[ll][weight_w]*layer_config[ll][weight_h]*layer_config[ll][weight_n]/VEC_SIZE > WEIGHT_BUF_SIZE){
-
 			printf("Error: required weight_buffer size is %d, configured size is %d \n", layer_config[ll][weight_w]*layer_config[ll][weight_h]*layer_config[ll][weight_n]/VEC_SIZE, WEIGHT_BUF_SIZE);
 			return 1;
 		}
 		*/
-
 	}
 
 	// image and weight files
@@ -692,13 +692,13 @@ int prepare()
 	image        = (DTYPE *)alignedMalloc(sizeof(DTYPE)*IMAGE_FILE_SIZE, DMA_ALIGNMENT);
 	biases	     = (DTYPE *)alignedMalloc(sizeof(DTYPE)*BIASES_FILE_SIZE, DMA_ALIGNMENT);
 	// input data buffers
-	// padding the input RGB image with extra number of zeros channels, so that data_n/weight_n is divisible by VEC_SIZE
+	// padding the input RGB image with extrals, so that data_n/weight_n is divisible by VEC_SIZE
 	layer_config[0][weight_n] = ceil((float)layer_config[0][weight_n]/VEC_SIZE)*VEC_SIZE;
 	printf ("[INFO] weight_n is changed to %d\n", layer_config[0][weight_n]);
 	layer_config[0][data_n] = layer_config[0][weight_n];
 
-	data_init   = (DTYPE *)alignedMalloc(sizeof(DTYPE)*layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n], DMA_ALIGNMENT);
-	memset(data_init, 0, sizeof(DTYPE)*layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]);// fill non-RGB dims with 0
+	data_init   = (DTYPE *)alignedMalloc(sizeof(DTYPE)*layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]*layer_config[0][data_t], DMA_ALIGNMENT);
+	memset(data_init, 0, sizeof(DTYPE)*layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]*layer_config[0][data_t]);// fill non-RGB dims with 0
 
 	if(weights == NULL || image == NULL || data_init == NULL || biases == NULL)
 	{
@@ -711,26 +711,30 @@ int prepare()
 		return 1;
 	}
 
-    // Weights
-    bin_file_r.open(weight_file_path, ios::in | ios::binary);
+	// Weights
+	bin_file_r.open(weight_file_path, ios::in | ios::binary);
 
-    if(bin_file_r.is_open())
-    {
+	if(bin_file_r.is_open())
+	{
 		//Get file size
 		bin_file_r.seekg(0, bin_file_r.end);
 		file_size = bin_file_r.tellg();
 		bin_file_r.seekg(0, bin_file_r.beg);
 
-    	bin_file_r.read((char *)weights, sizeof(DTYPE)*WEIGHTS_FILE_SIZE);
-    	printf("\n%d total weights read \n", file_size/((int)sizeof(DTYPE)));
+		bin_file_r.read((char *)weights, sizeof(DTYPE)*WEIGHTS_FILE_SIZE);
+		printf("\n%d total weights read \n", file_size/((int)sizeof(DTYPE)));
 		if(WEIGHTS_FILE_SIZE!=(file_size/(sizeof(DTYPE))))
 			printf("Warning: weight file size does not match user configuration !!!\n");
-    	bin_file_r.close();
-    }
-    else
-    	printf("Weights file does not exits !!!\n");
-
-	return 0;
+		bin_file_r.close();
+	}
+	else
+		printf("Weights file does not exits !!!\n");
+	int status = EXIT_SUCCESS;//reorderWeights(padding_offset);
+	if(status != EXIT_SUCCESS) {
+		printf("Error in reorderWeights : %d\n", status);
+		return status;
+	}
+	return EXIT_SUCCESS;
 }
 
 // Release all memory resources here
