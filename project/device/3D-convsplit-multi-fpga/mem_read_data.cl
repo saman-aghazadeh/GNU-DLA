@@ -7,7 +7,7 @@ void deser(
 		__global ulong4		*restrict bottom)
 {
 
-	printf ("[FPGA][Deser][DEV%d] start of deserializer\n", device_number);
+	// printf ("[FPGA][Deser][DEV%d] start of deserializer\n", device_number);
 
 	// if we have to receive something from the previous FPGA,
 	// we have to wait and read it.
@@ -22,13 +22,13 @@ void deser(
 		int total_size = data_w * data_h * data_t * weight_n;
 		total_size = ((total_size + 31)) / 32;
 
-		printf ("[FPGA][Deser][DEV%d] deserilizing with data_w=%d, data_h=%d, data_t=%d, weight_n=%d, total_size=%d\n",
-                        device_number,
-                        config.data_w,
-                        config.data_h,
-			config.data_t,
-                        config.weight_n,
-			total_size);
+		// printf ("[FPGA][Deser][DEV%d] deserilizing with data_w=%d, data_h=%d, data_t=%d, weight_n=%d, total_size=%d\n",
+                //        device_number,
+                //        config.data_w,
+                //        config.data_h,
+		//	  config.data_t,
+                //        config.weight_n,
+		//	  total_size);
 
 		for (int i = 0; i < total_size; i++) {
 			//printf ("[FPGA][Deser][DEV%d] deserializer receiving some data\n", device_number);
@@ -38,7 +38,7 @@ void deser(
 		}
 	}
 	
-	printf ("[FPGA][Deser][DEV%d] end of deserializer\n", device_number);	
+	// printf ("[FPGA][Deser][DEV%d] end of deserializer\n", device_number);	
 
 }
 
@@ -82,18 +82,18 @@ void memReadData(
 		int data_h_with_padding = data_h + 2 * conv_padding;
 		int data_t_with_padding = data_t + 2 * conv_padding;
 
-		printf ("[FPGA][memReadData][DEV%d][%d] layer_type=%d, data_w=%d, data_h=%d, data_t=%d, weight_m=%d, weight_h=%d, weight_w=%d, weight_n=%d, weight_t=%d, conv_padding=%d, data_w_with_padding=%d, data_h_with_padding=%d\n", device_number, i, layer_type, data_w, data_h, data_t, weight_m, weight_h, weight_w, weight_n, weight_t, conv_padding, data_w_with_padding, data_h_with_padding);
+		// printf ("[FPGA][memReadData][DEV%d][%d] layer_type=%d, data_w=%d, data_h=%d, data_t=%d, weight_m=%d, weight_h=%d, weight_w=%d, weight_n=%d, weight_t=%d, conv_padding=%d, data_w_with_padding=%d, data_h_with_padding=%d\n", device_number, i, layer_type, data_w, data_h, data_t, weight_m, weight_h, weight_w, weight_n, weight_t, conv_padding, data_w_with_padding, data_h_with_padding);
 
 		// It may seems strange, but it's memReadData responsibility, to let the 
 		// PE knows that it has to load a new set of weights.
 
 		// TODO: We assume for now that weight_m is divisble by LANE_NUM
 		int out_channel_iter = weight_m / LANE_NUM;
-		printf ("[FPGA][memReadData][DEV%d][%d] out_channel_iter is %d\n", device_number, i, out_channel_iter);	
+		// printf ("[FPGA][memReadData][DEV%d][%d] out_channel_iter is %d\n", device_number, i, out_channel_iter);	
 
 		for (int j = 0; j < out_channel_iter; j++) {
 	
-			printf ("[FPGA][memReadData][DEV%d][%d] processing out channel=%d\n", device_number, i, j*LANE_NUM);
+			// printf ("[FPGA][memReadData][DEV%d][%d] processing out channel=%d\n", device_number, i, j*LANE_NUM);
 			// We have to read the data brick by brick.
 			// Every brick is of size 
 			// W_VEC * weight_h * weight_n
@@ -106,7 +106,7 @@ void memReadData(
 			uint num_bricks = 0;
 			while (brick_idx_t != data_t_with_padding-weight_t+1) {
 
-				printf ("[FPGA][memReadData][DEV%d][%d] Processing a new brick with brick_idx_x=%d, brick_idx_y=%d and brick_idx_t=%d and id=%d\n", device_number, i, brick_idx_x, brick_idx_y, brick_idx_t, num_bricks);
+				// printf ("[FPGA][memReadData][DEV%d][%d] Processing a new brick with brick_idx_x=%d, brick_idx_y=%d and brick_idx_t=%d and id=%d\n", device_number, i, brick_idx_x, brick_idx_y, brick_idx_t, num_bricks);
 
 				// These indexes determines where are we in the 
 				// feature map.
@@ -118,7 +118,7 @@ void memReadData(
 				// TODO: Here assume weight_n is divisible by VEC_SIZE
 				short num_plates = weight_h * (split_weight_n/VEC_SIZE) * weight_t;
 
-				printf ("[FPGA][memReadData][DEV%d][%d] num_plates is %d\n", device_number, i, num_plates);
+				// printf ("[FPGA][memReadData][DEV%d][%d] num_plates is %d\n", device_number, i, num_plates);
 
 				for (short plate = 0; plate < num_plates; plate++) {
 					//if (i >= 12)
