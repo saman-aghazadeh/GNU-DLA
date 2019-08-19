@@ -34,14 +34,14 @@ void memWrite(
 		// We assume conv_z is divisble by LANE_NUM
 		uint num_plates = conv_y * (conv_z/LANE_NUM) * conv_t * ((conv_x-1)/W_INV_VEC + 1);
 		
-		printf ("[FPGA][memWrite][DEV%d][%d] conv_x=%d, conv_y=%d, conv_z=%d, weight_w=%d, num_plates=%d\n", device_number, i, conv_x, conv_y, conv_z, weight_w, num_plates);
+		// printf ("[FPGA][memWrite][DEV%d][%d] conv_x=%d, conv_y=%d, conv_z=%d, weight_w=%d, num_plates=%d\n", device_number, i, conv_x, conv_y, conv_z, weight_w, num_plates);
 
 		for (uint plate = 0; plate < num_plates; plate++) {
 			inv_rows inv;
 
 			inv = read_channel_intel(winograd_inv_transform_channels);
 
-			printf ("[FPGA][memWrite][DEV%d][%d] plate=%d\n", device_number, i, plate);
+			// printf ("[FPGA][memWrite][DEV%d][%d] plate=%d\n", device_number, i, plate);
 			
 			//if (i >= 13)
 			//	printf ("[FPGA][memWrite][%d] start writing to memory!\n", i);
@@ -86,7 +86,7 @@ void ser(
 
 	// If we have to send something to the next fpga,
 	// then we have to send it over the serial channel
-	printf ("[FPGA][ser][DEV%d] start of the serializer\n", device_number);
+	// printf ("[FPGA][ser][DEV%d] start of the serializer\n", device_number);
 	if (ser_data) {
 		memrd_data_ser_configuration config = read_channel_intel(memrd_data_ser_configuration_channel);
 		
@@ -98,12 +98,12 @@ void ser(
 		int total_size = nl_data_w * nl_data_h * nl_data_t * nl_weight_n;
 		total_size = ((total_size + 31) / 32);
 
-                printf ("[FPGA][ser][DEV%d] serializing with data_w=%d, data_h=%d, data_t=%d, weight_n=%d\n",
-                        device_number,
-                        config.nl_data_w,
-                        config.nl_data_h,
-			config.nl_data_t,
-                        config.nl_weight_n); 
+                // printf ("[FPGA][ser][DEV%d] serializing with data_w=%d, data_h=%d, data_t=%d, weight_n=%d\n",
+                //        device_number,
+                //        config.nl_data_w,
+                //         config.nl_data_h,
+		//	config.nl_data_t,
+                //        config.nl_weight_n); 
 
 		for (int i = 0; i < total_size; i++) {
 			// printf ("[FPGA][ser][DEV%d] serializer sending a data\n", device_number);
@@ -114,6 +114,6 @@ void ser(
 		}
 	}	
 
-	printf ("[FPGA][ser][DEV%d] End of the serializer\n", device_number);
+	// printf ("[FPGA][ser][DEV%d] End of the serializer\n", device_number);
 
 }

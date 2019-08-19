@@ -10,7 +10,7 @@ void memReadWeight(
 			__global bias_DPTYPE	*restrict biases)
 
 {
-	printf ("[FPGA][memReadWeight][DEV%d] Number of layers is %d\n", device_number, config_size);
+	// printf ("[FPGA][memReadWeight][DEV%d] Number of layers is %d\n", device_number, config_size);
 
 	uint layer_offset = 0;
 
@@ -27,7 +27,7 @@ void memReadWeight(
 		int split_weight_n_offset = config.split_weight_n_offset;
 		ushort num_plates = weight_t * weight_h * (split_weight_n/VEC_SIZE);
 
-		printf ("[FPGA][memReadWeight][DEV%d][%d] weight_m=%d, weight_n=%d, weight_h=%d, weight_w=%d, num_plates=%d\n", device_number, i, weight_m, weight_n, weight_h, weight_w, num_plates);
+		// printf ("[FPGA][memReadWeight][DEV%d][%d] weight_m=%d, weight_n=%d, weight_h=%d, weight_w=%d, num_plates=%d\n", device_number, i, weight_m, weight_n, weight_h, weight_w, num_plates);
 
 		// assuming that the weight for every sub-layer is ordered sequentially one after the other
 		uint offset = split_weight_n_offset * weight_h * weight_t;
@@ -35,7 +35,7 @@ void memReadWeight(
 		// We assume weight_m is divisible by LANE_NUM
 		for (ushort j = 0; j < weight_m/LANE_NUM; j++) {
 			
-			printf ("[FPGA][memReadWeight][DEV%d][%d] Processing output channel %d\n", device_number, i, j*LANE_NUM);
+			// printf ("[FPGA][memReadWeight][DEV%d][%d] Processing output channel %d\n", device_number, i, j*LANE_NUM);
 
 			bias_DPTYPE bias_buffer;
 			// Reading LANE_NUM of biases and send them to their 
@@ -45,7 +45,7 @@ void memReadWeight(
 			// Now we read the weights and send them plate by plate to the 
 			// appropriate PEs
 			for (ushort pe = 0; pe < LANE_NUM; pe++) {
-				printf ("[FPGA][memReadWeight][DEV%d][%d] Processing lane %d\n", device_number, i, pe);
+				// printf ("[FPGA][memReadWeight][DEV%d][%d] Processing lane %d\n", device_number, i, pe);
 				write_channel_intel(bias_channels[pe], bias_buffer.bias[pe]);
 				for (ushort plate = 0; plate < num_plates; plate++) {
 					//if (i >= 13)
