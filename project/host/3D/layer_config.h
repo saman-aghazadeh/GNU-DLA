@@ -1,6 +1,6 @@
 #include "../../device/hw_param.cl"
 
-#define NUM_CONFIG_ITEM  32
+#define NUM_CONFIG_ITEM  31
 
 /*
 // VGG-16 Configuration
