@@ -632,24 +632,24 @@ int prepare()
 			// Currently weight_n must be divisible by VEC_SIZE (for first layer, padding is performed when weight_n is not divisible by VEC_SIZE)
 			if((layer_config[ll][weight_n]%VEC_SIZE)!=0){
 				printf("\nError: incorrect setting of parameter VEC_SIZE !!!\n");
-				return 1;
+				//return 1;
 			}
 			if((layer_config_original[ll][data_n]!=layer_config_original[ll-1][conv_z])){
 				printf("\nError: incorrect setting of convolution input/output size for layer-%d!!!\n", ll+1);
-				return 1;
+				//return 1;
 			}
 		}
 		if((layer_config_original[ll][conv_x]!=(layer_config_original[ll][data_w]-layer_config_original[ll][weight_w]+2*layer_config_original[ll][conv_padding])/layer_config_original[ll][conv_stride]+1)
 			|| (layer_config_original[ll][conv_y]!=(layer_config_original[ll][data_h]-layer_config_original[ll][weight_h]+2*layer_config_original[ll][conv_padding])/layer_config_original[ll][conv_stride]+1)
 		    || (layer_config_original[ll][conv_z]!=layer_config_original[ll][weight_m])){
 			printf("\nError: incorrect setting of convolution output size or filter params for layer-%d!!!\n", ll+1);
-			return 1;
+			//return 1;
 		}
 		if(layer_config_original[ll][pool_on] && ((layer_config_original[ll][pool_x]!=(layer_config_original[ll][conv_x]-layer_config_original[ll][pool_size])/layer_config_original[ll][pool_stride]+1)
 			|| (layer_config_original[ll][pool_y]!=(layer_config_original[ll][conv_y]-layer_config_original[ll][pool_size])/layer_config_original[ll][pool_stride]+1)
 		    || (layer_config_original[ll][pool_z]!=layer_config_original[ll][conv_z]))){
 			printf("\nError: incorrect setting of pooling input/output size for layer-%d!!!\n", ll+1);
-			return 1;
+			//return 1;
 		}
 
 		if(layer_config[ll][conv_x]==1){ // when only one group for FC layer

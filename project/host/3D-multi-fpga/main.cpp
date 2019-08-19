@@ -95,8 +95,8 @@ const char *input_file_path = "./data/data_vgg16/image.dat";
 #define IMAGE_FILE_SIZE		128*171*3*16
 #define WEIGHTS_FILE_SIZE	291879616
 #define BIASES_FILE_SIZE	10944
-#define LAYER_NUM		10
-#define CONV_NUM		8
+#define LAYER_NUM		11
+#define CONV_NUM		9
 #define IN_BUF_SIZE		55705600
 #define OUT_BUF_SIZE		55705600
 const char *weight_file_path = "./data/data_vgg16/weights.dat";
@@ -201,6 +201,8 @@ void SplitBufferToArray(char *buffer, char * delim, char ** Output);
 
 void* device_runner (void* args);
 
+int device_mapping[] = {3,1,0};
+
 int main(int argc, char** argv)
 {
 	cl_int status;
@@ -230,7 +232,7 @@ int main(int argc, char** argv)
 
 	// Query the available OpenCL device
 	device.reset(getDevices(platform_id, DEVICE_TYPE, &num_devices));
-	num_devices = 2;
+	num_devices = 3;
 	printf("\nPlatform: %s\n", getPlatformName(platform_id).c_str());
 	printf("Using %d device(s)\n", num_devices);
 	for(unsigned i = 0; i < num_devices; ++i) {
@@ -246,18 +248,22 @@ int main(int argc, char** argv)
 	}
 
 	// Create the context.
-	context[0] = clCreateContext(NULL, 1, &(device[1]), NULL, NULL, &status);
+	context[0] = clCreateContext(NULL, 1, &(device[device_mapping[0]]), NULL, NULL, &status);
 	checkError(status, "Failed to create context");
 	
-	context[1] = clCreateContext(NULL, 1, &(device[0]), NULL, NULL, &status);
+	context[1] = clCreateContext(NULL, 1, &(device[device_mapping[1]]), NULL, NULL, &status);
+	checkError(status, "Failed to create context");
+
+	context[2] = clCreateContext(NULL, 1, &(device[device_mapping[2]]), NULL, NULL, &status);
 	checkError(status, "Failed to create context");
 
 	// Create Program Objects
 	char *kernel_file_name=argv[1];
 
 	// Create the program for all device. All devices execute the same kernel.
-	program[0] = createProgramFromFile(context[0], (const char *) kernel_file_name, &(device[1]), 1);
-	program[1] = createProgramFromFile(context[1], (const char *) kernel_file_name, &(device[0]), 1);
+	program[0] = createProgramFromFile(context[0], (const char *) kernel_file_name, &(device[device_mapping[0]]), 1);
+	program[1] = createProgramFromFile(context[1], (const char *) kernel_file_name, &(device[device_mapping[1]]), 1);
+	program[2] = createProgramFromFile(context[2], (const char *) kernel_file_name, &(device[device_mapping[2]]), 1);
 
 	// Extracting the layer segmentations	
 	assigned_layers.reset(num_devices);
@@ -323,13 +329,13 @@ int main(int argc, char** argv)
 	// Command queue	
 	for (int i = 0; i < num_devices; i++) {
 		printf ("[INFO] Creating the command queues for the " ANSI_COLOR_RED "Device %d " ANSI_COLOR_RESET "\n", i);
-		que_memRdData[i] = clCreateCommandQueue(context[i], device[(!(i)&1)], CL_QUEUE_PROFILING_ENABLE, &status);
+		que_memRdData[i] = clCreateCommandQueue(context[i], device[device_mapping[i]], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue for memReadData");
-		que_memRdWeight[i] = clCreateCommandQueue(context[i], device[(!(i)&1)], CL_QUEUE_PROFILING_ENABLE, &status);
+		que_memRdWeight[i] = clCreateCommandQueue(context[i], device[device_mapping[i]], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue for memRdWeight");
-		que_controller[i] = clCreateCommandQueue(context[i], device[(!(i)&1)], CL_QUEUE_PROFILING_ENABLE, &status);
+		que_controller[i] = clCreateCommandQueue(context[i], device[device_mapping[i]], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue for controller");
-		que_memWrite[i] = clCreateCommandQueue(context[i], device[(!(i)&1)], CL_QUEUE_PROFILING_ENABLE, &status);
+		que_memWrite[i] = clCreateCommandQueue(context[i], device[device_mapping[i]], CL_QUEUE_PROFILING_ENABLE, &status);
 		checkError(status, "Failed to create command queue for memWrite");
 
 		// Kernel
@@ -686,6 +692,8 @@ int prepare()
 		}
 		*/
 	}
+
+
 
 	// image and weight files
 	weights      = (DTYPE *)alignedMalloc(sizeof(DTYPE)*WEIGHTS_FILE_SIZE, DMA_ALIGNMENT);
