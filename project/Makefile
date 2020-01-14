@@ -11,7 +11,14 @@ HOST_EXE_MAC_TEST = run_mac_test.exe
 HOST_EXE_CHANNEL_MULTI_FPGA = run_channel_multi_fpga.exe
 HOST_EXE_DLA_NOSYS = run_dla_nosys.exe
 HOST_EXE_DLA_NOSYS_MULTI_FPGA = run_dla_nosys_multi_fpga.exe
+HOST_EXE_DLA_NOSYS_MULTI_FPGA_MMREV1_SPATIAL = run_dla_nosys_multi_fpga_mmrev1_spatial.exe
+HOST_EXE_DLA_NOSYS_MMREV1 = run_dla_nosys_mmrev1.exe
 HOST_EXE_ONEMACHINE_MULTI_FPGA = run_onemachine_multi_fpga.exe
+HOST_EXE_2D_MMPE = run_2d_mmpe.exe
+HOST_EXE_2D_MMCPU = run_2d_mmcpu.exe
+HOST_EXE_3D_I3D = run_3d_i3d.exe
+HOST_EXE_3D_MULTI_FPGA = run_3d_multi_fpga.exe
+# HOST_EXE_3D_MMPE = run_3d_mmpe.exe
 HOST_SRCS = ./host/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_V2 = ./host/main_v2.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_V3 = ./host/main_v3.cpp ../common/ocl_util.cpp ../common/timer.cpp
@@ -24,7 +31,14 @@ HOST_SRCS_MAC_TEST = ./host/multi-fpga/template_rxtx_ut.cpp ./host/multi-fpga/fp
 HOST_SRCS_CHANNEL_MULTI_FPGA = ./host/multi-fpga/channel/multi_fpga.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_DLA_NOSYS = ./host/DLA-nosys/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_DLA_NOSYS_MULTI_FPGA = ./host/DLA-nosys-multi-fpga/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
+HOST_SRCS_DLA_NOSYS_MULTI_FPGA_MMREV1_SPATIAL = ./host/DLA-nosys-multi-fpga-MMRev1-Spatial/main.cpp  ../common/ocl_util.cpp ../common/timer.cpp
+HOST_SRCS_DLA_MMREV1 = ./host/DLA-nosys-MMRev1/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 HOST_SRCS_ONEMACHINE_MULTI_FPGA = ./host/multi-fpga/one_machine_multi_fpga.cpp ../common/ocl_util.cpp ../common/timer.cpp
+HOST_SRCS_2D_MMPE = ./host/2D_MMPE/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
+HOST_SRCS_2D_MMCPU = ./host/2D_MMCPU/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
+# HOST_SRCS_3D_MMPE = ./host/3D_MMPE/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
+HOST_SRCS_3D_I3D = ./host/3D-I3D/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
+HOST_SRCS_3D_MULTI_FPGA = ./host/3D-multi-fpga/main.cpp ../common/ocl_util.cpp ../common/timer.cpp
 
 HOST_OBJS = $(HOST_SRCS:%.cpp=%.o)
 HOST_OBJS_V2 = $(HOST_SRCS_V2:%.cpp=%.o)
@@ -38,7 +52,21 @@ HOST_OBJS_CHANNEL_TEST_RX = $(HOST_SRCS_CHANNEL_TEST_RX:%.cpp=%.o)
 HOST_OBJS_CHANNEL_MULTI_FPGA = $(HOST_SRCS_CHANNEL_MULTI_FPGA:%.cpp=%.o)
 HOST_OBJS_DLA_NOSYS = $(HOST_SRCS_DLA_NOSYS:%.cpp=%.o)
 HOST_OBJS_DLA_NOSYS_MULTI_FPGA = $(HOST_SRCS_DLA_NOSYS_MULTI_FPGA:%.cpp=%.o)
+HOST_OBJS_DLA_NOSYS_MULTI_FPGA_MMREV1_SPATIAL = $(HOST_SRCS_DLA_NOSYS_MULTI_FPGA_MMREV1_SPATIAL:%.cpp=%.o)
+HOST_OBJS_DLA_NOSYS_MMREV1 = $(HOST_SRCS_DLA_MMREV1:%.cpp=%.o)
 HOST_OBJS_ONEMACHINE_MULTI_FPGA = $(HOST_SRCS_ONEMACHINE_MULTI_FPGA:%.cpp=%.o)
+HOST_OBJS_2D_MMPE = $(HOST_SRCS_2D_MMPE:%.cpp=%.o)
+HOST_OBJS_2D_MMCPU = $(HOST_SRCS_2D_MMCPU:%.cpp=%.o)
+# HOST_OBJS_3D_MMPE = $(HOST_SRCS_3D_MMPE:%.cpp=%.o)
+HOST_OBJS_3D_I3D = $(HOST_SRCS_3D_I3D:%.cpp=%.o)
+HOST_OBJS_3D_MULTI_FPGA = $(HOST_SRCS_3D_MULTI_FPGA:%.cpp=%.o)
+
+# MKL Integration
+USE_MKL = 1
+ifeq ($(USE_MKL), 1)
+MKL_PATH = /home/user/sbiookag/intel
+MKL_INCS = $(MKL_PATH)/mkl/include
+endif
 
 HOST_INCS = ../common
 HOST_DEBUG =
@@ -117,8 +145,13 @@ ifeq ($(VENDOR),xilinx)
 COMP_CONFIG = -I$(XILINX_SDX)/runtime/include/1_2 -I$(HOST_INCS)  -DFPGA_DEVICE -DXILINX
 LINK_CONFIG = -L$(XILINX_SDX)/runtime/lib/x86_64 -lxilinxopencl
 else ifeq ($(VENDOR),altera)
-COMP_CONFIG = $(shell aocl compile-config) -I$(HOST_INCS)  -DFPGA_DEVICE -D$(MODEL)
+ifeq ($(USE_MKL), 0)
+COMP_CONFIG = $(shell aocl compile-config) -I$(HOST_INCS) -DFPGA_DEVICE -D$(MODEL)
 LINK_CONFIG = $(shell aocl link-config) -lrt
+else
+COMP_CONFIG = $(shell aocl compile-config) -I$(HOST_INCS) -I$(MKL_INCS) -Wl,--start-group "$(MKL_PATH)/mkl/lib/intel64"/libmkl_intel_lp64.a "$(MKL_PATH)/mkl/lib/intel64"/libmkl_intel_thread.a "$(MKL_PATH)/mkl/lib/intel64"/libmkl_core.a -Wl,--end-group -DFPGA_DEVICE -D$(MODEL)
+LINK_CONFIG = $(shell aocl link-config) -lrt -L"$(MKL_PATH)/compilers_and_libraries/linux/lib/intel64" -liomp5 -lpthread -ldl -lm -Wl,--start-group "$(MKL_PATH)/mkl/lib/intel64"/libmkl_intel_lp64.a "$(MKL_PATH)/mkl/lib/intel64"/libmkl_intel_thread.a "$(MKL_PATH)/mkl/lib/intel64"/libmkl_core.a
+endif
 else ifeq ($(VENDOR),amd)
 DEV_EXE =
 endif
@@ -168,10 +201,13 @@ all: host fpga
 
 .PHONY: host
 ifeq ($(FLOW),sw_emu)
-host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CASCADE_EMU) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_CHANNEL_MULTI_FPGA) $(HOST_EXE_DLA_NOSYS) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA) $(HOST_EXE_ONEMACHINE_MULTI_FPGA)
+host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CASCADE_EMU) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_CHANNEL_MULTI_FPGA) $(HOST_EXE_DLA_NOSYS) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA) $(HOST_EXE_DLA_NOSYS_MMREV1) $(HOST_EXE_ONEMACHINE_MULTI_FPGA) $(HOST_EXE_2D_MMPE) $(HOST_EXE_2D_MMCPU) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA_MMREV1_SPATIAL)
 else
-host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_DLA_NOSYS) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA) $(HOST_EXE_ONEMACHINE_MULTI_FPGA)
+host: $(HOST_EXE) $(HOST_EXE_V2) $(HOST_EXE_V3) $(HOST_EXE_MULTICORECONV) $(HOST_EXE_CHANNEL_TEST) $(HOST_EXE_CHANNEL_TEST_TX) $(HOST_EXE_CHANNEL_TEST_RX) $(HOST_EXE_DLA_NOSYS) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA) $(HOST_EXE_DLA_NOSYS_MMREV1) $(HOST_EXE_ONEMACHINE_MULTI_FPGA) $(HOST_EXE_2D_MMPE) $(HOST_EXE_2D_MMCPU) $(HOST_EXE_DLA_NOSYS_MULTI_FPGA_MMREV1_SPATIAL)
 endif
+
+.PHONY: I3D
+I3D: $(HOST_EXE_3D_I3D) $(HOST_EXE_3D_MULTI_FPGA)
 
 .PHONY: fpga
 ifeq ($(FLOW),sw_emu)
@@ -215,8 +251,29 @@ $(HOST_EXE_DLA_NOSYS): $(HOST_OBJS_DLA_NOSYS)
 $(HOST_EXE_DLA_NOSYS_MULTI_FPGA): $(HOST_OBJS_DLA_NOSYS_MULTI_FPGA)
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_DLA_NOSYS_MULTI_FPGA) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
 
+$(HOST_EXE_DLA_NOSYS_MMREV1): $(HOST_OBJS_DLA_NOSYS_MMREV1)
+	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_DLA_NOSYS_MMREV1) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
+
 $(HOST_EXE_ONEMACHINE_MULTI_FPGA): $(HOST_OBJS_ONEMACHINE_MULTI_FPGA)
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_ONEMACHINE_MULTI_FPGA) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
+
+$(HOST_EXE_2D_MMPE): $(HOST_OBJS_2D_MMPE)
+	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_2D_MMPE) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
+
+$(HOST_EXE_2D_MMCPU): $(HOST_OBJS_2D_MMCPU)
+	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_2D_MMCPU) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
+
+$(HOST_EXE_DLA_NOSYS_MULTI_FPGA_MMREV1_SPATIAL): $(HOST_OBJS_DLA_NOSYS_MULTI_FPGA_MMREV1_SPATIAL)
+	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_DLA_NOSYS_MULTI_FPGA_MMREV1_SPATIAL) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
+
+$(HOST_EXE_3D_I3D): $(HOST_OBJS_3D_I3D)
+	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_3D_I3D) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
+
+# $(HOST_EXE_3D_MMPE): $(HOST_OBJS_3D_MMPE)
+#	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_3D_MMPE) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
+
+$(HOST_EXE_3D_MULTI_FPGA): $(HOST_OBJS_3D_MULTI_FPGA)
+	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(HOST_OBJS_3D_MULTI_FPGA) -o $@ $(LINK_CONFIG) $(OCV_LIBS)
 
 %.o: %.cpp
 	$(CXX) $(OCV_LIBDIRS) $(OCV_INCLUDES) $(CXXFLAGS) -c $< -o $@ $(COMP_CONFIG) $(OCV_LIBS)

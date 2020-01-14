@@ -75,8 +75,8 @@ const char *input_file_path = "./data/data_alex/image.dat";
 #define IMAGE_FILE_SIZE   (7*7*512)
 #define WEIGHTS_FILE_SIZE 324442112  //fc8-1024
 #define BIASES_FILE_SIZE  13440
-#define LAYER_NUM         1
-#define CONV_NUM          1
+#define LAYER_NUM         16
+#define CONV_NUM          16
 const char *weight_file_path = "./data/data_vgg16/weights.dat";
 const char *input_file_path = "./data/data_vgg16/image.dat";
 #endif
@@ -380,7 +380,7 @@ int main(int argc, char** argv)
 	cl_ulong memWrite_time;
 	cl_ulong controller_time;
 	
-	for (int iter = 0; iter < 1; iter++) {
+	for (int iter = 0; iter < 10; iter++) {
 	
 		printf ("[INFO] Iteration number #%d\n", iter);
 	

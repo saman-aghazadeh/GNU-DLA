@@ -23,7 +23,7 @@
 #include "timer.h"
 
 // CNN network configuration file
-#include "../../device/3D/hw_param.cl"
+#include "../../device/3D-I3D/hw_param.cl"
 #include "layer_config.h"
 
 #ifdef USE_OPENCV

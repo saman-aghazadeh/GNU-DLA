@@ -70,7 +70,7 @@ void controller(
 		int memwr_dst = config[i].memwr_dst;
 		int num_bricks = config[i].num_bricks;
 
-		printf ("[FPGA][Controller][DEV%d] Layer %d execution. layer_type=%d, data_w=%d, data_h=%d, weight_w=%d, weight_h=%d, weight_n=%d, weight_m=%d, bias_size=%d, memrd_src=%d, conv_x=%d, conv_y=%d, conv_z=%d, num_bricks=%d\n", device_number, i, layer_type, data_w, data_h, weight_w, weight_h, weight_n, weight_m, bias_size, memrd_src, conv_x, conv_y, conv_z, num_bricks);
+		printf ("[FPGA][Controller][DEV%d] Layer %d execution. layer_type=%d, data_w=%d, data_h=%d, data_t=%d, weight_w=%d, weight_h=%d, weight_n=%d, weight_t=%d, weight_m=%d, bias_size=%d, memrd_src=%d, conv_x=%d, conv_y=%d, conv_z=%d, num_bricks=%d\n", device_number, i, layer_type, data_w, data_h, data_t, weight_w, weight_h, weight_n, weight_t, weight_m, bias_size, memrd_src, conv_x, conv_y, conv_z, num_bricks);
 
 		// This part controls the memrd_data module
 		memrd_data_configuration memrd_data_config;

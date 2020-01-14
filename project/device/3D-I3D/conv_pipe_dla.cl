@@ -32,7 +32,6 @@
 
 #include "hw_param.cl"
 #include "ihc_apint.h"
-#include "rtl_lib.h"
 
 #pragma OPENCL EXTENSION cl_intel_channels : enable
 
@@ -185,6 +184,7 @@ MACTYPE mac(lane_data input, lane_data weights)
 }
 
 // parallel MAC units including (VEC_SIZE-1) multipliers
+/*
 MACTYPE soft_mac(lane_data input, lane_data weights)
 {
 	MACTYPE output = MASK_MULT & CZERO;		
@@ -196,7 +196,7 @@ MACTYPE soft_mac(lane_data input, lane_data weights)
 
 	return output;
 }
-
+*/
 DPTYPE pool_max(DPTYPE a_in, DPTYPE b_in)
 {
 	DPTYPE max_value;

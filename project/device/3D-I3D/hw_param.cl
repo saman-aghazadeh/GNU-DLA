@@ -34,8 +34,6 @@
 #ifndef _HW_PARAM_H
 #define _HW_PARAM_H
 
-#define I3D_TEST
-
 // Macro architecture parameters
 // General
 // #define VEC_SIZE            4              // larger than 4, i.e., 4, 8, 16, ...

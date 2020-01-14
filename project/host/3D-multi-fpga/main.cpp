@@ -33,7 +33,7 @@
 #include "timer.h"
 
 // CNN network configuration file
-#include "../../device/DLA-nosys/hw_param.cl"
+#include "../../device/3D-multi-fpga/hw_param.cl"
 #include "layer_config.h"
 
 #ifdef USE_OPENCV
@@ -102,6 +102,22 @@ const char *input_file_path = "./data/data_vgg16/image.dat";
 const char *weight_file_path = "./data/data_vgg16/weights.dat";
 const char *input_file_path = "./data/data_vgg16/image.dat";	
 #endif
+
+#ifdef I3D_TEST
+// VGG16
+// // Original problem size
+// // File size is in num of DTYPE numbers
+#define IMAGE_FILE_SIZE   224*224*3*64
+#define WEIGHTS_FILE_SIZE 291879616  //fc8-1024
+#define BIASES_FILE_SIZE  10944
+#define LAYER_NUM         58
+#define CONV_NUM          8
+#define IN_BUF_SIZE    55705600  // Note: the buffer size should be large enough to hold all temperary results
+#define OUT_BUF_SIZE   55705600
+const char *weight_file_path = "./data/data_vgg16/weights.dat";
+const char *input_file_path = "./data/data_vgg16/image.dat";
+#endif
+//
 
 // Configuration file instructions
 enum config_item{
@@ -201,7 +217,9 @@ void SplitBufferToArray(char *buffer, char * delim, char ** Output);
 
 void* device_runner (void* args);
 
-int device_mapping[] = {3,1,0};
+//int device_mapping[] = {3,1,0};
+int device_mapping[] = {3};
+//int device_mapping[] = {0};
 
 int main(int argc, char** argv)
 {
@@ -230,9 +248,10 @@ int main(int argc, char** argv)
 		return false;
 	}
 
+
 	// Query the available OpenCL device
 	device.reset(getDevices(platform_id, DEVICE_TYPE, &num_devices));
-	num_devices = 3;
+	num_devices = 1;
 	printf("\nPlatform: %s\n", getPlatformName(platform_id).c_str());
 	printf("Using %d device(s)\n", num_devices);
 	for(unsigned i = 0; i < num_devices; ++i) {
@@ -247,23 +266,27 @@ int main(int argc, char** argv)
 		return false;
 	}
 
+
 	// Create the context.
 	context[0] = clCreateContext(NULL, 1, &(device[device_mapping[0]]), NULL, NULL, &status);
+	//context[0] = clCreateContext(NULL, 1, &(device[0]), NULL, NULL, &status);
 	checkError(status, "Failed to create context");
 	
-	context[1] = clCreateContext(NULL, 1, &(device[device_mapping[1]]), NULL, NULL, &status);
-	checkError(status, "Failed to create context");
+	// context[1] = clCreateContext(NULL, 1, &(device[device_mapping[1]]), NULL, NULL, &status);
+	// checkError(status, "Failed to create context");
 
-	context[2] = clCreateContext(NULL, 1, &(device[device_mapping[2]]), NULL, NULL, &status);
-	checkError(status, "Failed to create context");
+	// context[2] = clCreateContext(NULL, 1, &(device[device_mapping[2]]), NULL, NULL, &status);
+	// checkError(status, "Failed to create context");
 
 	// Create Program Objects
 	char *kernel_file_name=argv[1];
 
 	// Create the program for all device. All devices execute the same kernel.
 	program[0] = createProgramFromFile(context[0], (const char *) kernel_file_name, &(device[device_mapping[0]]), 1);
-	program[1] = createProgramFromFile(context[1], (const char *) kernel_file_name, &(device[device_mapping[1]]), 1);
-	program[2] = createProgramFromFile(context[2], (const char *) kernel_file_name, &(device[device_mapping[2]]), 1);
+	// program[0] = createProgramFromFile(context[0], (const char *) kernel_file_name, &(device[0]), 1);
+	
+	// program[1] = createProgramFromFile(context[1], (const char *) kernel_file_name, &(device[device_mapping[1]]), 1);
+	// program[2] = createProgramFromFile(context[2], (const char *) kernel_file_name, &(device[device_mapping[2]]), 1);
 
 	// Extracting the layer segmentations	
 	assigned_layers.reset(num_devices);
@@ -755,110 +778,103 @@ void cleanup()
 		printf ("[INFO] Killing all kernels!\n");
 
 		// Killing the kernels
-		if(knl_memRdData[0]) {
-			clReleaseKernel(knl_memRdData[0]);
+		if(knl_memRdData[i]) {
+			clReleaseKernel(knl_memRdData[i]);
 		}
-		if(knl_memRdData[1]) {
-			clReleaseKernel(knl_memRdData[1]);
+		// if(knl_memRdData[1]) {
+		//	clReleaseKernel(knl_memRdData[1]);
+		// }
+		if(knl_memRdWeight[i]) {
+			clReleaseKernel(knl_memRdWeight[i]);
 		}
-		if(knl_memRdWeight[0]) {
-			clReleaseKernel(knl_memRdWeight[0]);
+		// if(knl_memRdWeight[1]) {
+		//	clReleaseKernel(knl_memRdWeight[1]);
+		//}
+		if(knl_controller[i]) {
+			clReleaseKernel(knl_controller[i]);
 		}
-		if(knl_memRdWeight[1]) {
-			clReleaseKernel(knl_memRdWeight[1]);
+		// if(knl_controller[1]) {
+		//	clReleaseKernel(knl_controller[1]);
+		//}
+		if(knl_memWrite[i]) {
+			clReleaseKernel(knl_memWrite[i]);
 		}
-		if(knl_controller[0]) {
-			clReleaseKernel(knl_controller[0]);
-		}
-		if(knl_controller[1]) {
-			clReleaseKernel(knl_controller[1]);
-		}
-		if(knl_memWrite[0]) {
-			clReleaseKernel(knl_memWrite[0]);
-		}
-		if(knl_memWrite[1]) {
-			clReleaseKernel(knl_memWrite[1]);
-		}
+		// if(knl_memWrite[1]) {
+		//	clReleaseKernel(knl_memWrite[1]);
+		// }
 
 		printf ("[INFO] Killing all command queues!\n");
 
 		// Killing all the queues
-		if(que_memRdData[0]) {
-			clReleaseCommandQueue(que_memRdData[0]);
+		if(que_memRdData[i]) {
+			clReleaseCommandQueue(que_memRdData[i]);
 		}
-		if(que_memRdData[1]) {
-			clReleaseCommandQueue(que_memRdData[1]);
+		// if(que_memRdData[1]) {
+		//	clReleaseCommandQueue(que_memRdData[1]);
+		// }
+		if(que_memRdWeight[i]) {
+			clReleaseCommandQueue(que_memRdWeight[i]);
 		}
-		if(que_memRdWeight[0]) {
-			clReleaseCommandQueue(que_memRdWeight[0]);
+		// if(que_memRdWeight[1]) {
+		//	clReleaseCommandQueue(que_memRdWeight[1]);
+		// }
+		if(que_controller[i]) {
+			clReleaseCommandQueue(que_controller[i]);
 		}
-		if(que_memRdWeight[1]) {
-			clReleaseCommandQueue(que_memRdWeight[1]);
+		// if(que_controller[1]) {
+		//	clReleaseCommandQueue(que_controller[1]);
+		//}
+		if(que_memWrite[i]) {
+			clReleaseCommandQueue(que_memWrite[i]);
 		}
-		if(que_controller[0]) {
-			clReleaseCommandQueue(que_controller[0]);
-		}
-		if(que_controller[1]) {
-			clReleaseCommandQueue(que_controller[1]);
-		}
-		if(que_memWrite[0]) {
-			clReleaseCommandQueue(que_memWrite[0]);
-		}
-		if(que_memWrite[1]) {
-			clReleaseCommandQueue(que_memWrite[1]);
-		}
+		// if(que_memWrite[1]) {
+		//	clReleaseCommandQueue(que_memWrite[1]);
+		// }
 
 		printf ("[INFO] Releasing all memory objects!\n");
 
 		// Killing all the buffers
-		if(config_buf[0]) {
-			clReleaseMemObject(config_buf[0]);
+		if(config_buf[i]) {
+			clReleaseMemObject(config_buf[i]);
 		}
-		if(config_buf[1]) {
-			clReleaseMemObject(config_buf[1]);
+		// if(config_buf[1]) {
+		//	clReleaseMemObject(config_buf[1]);
+		// }
+		if(bottom0_buf[i]) {
+			clReleaseMemObject(bottom0_buf[i]);
 		}
-		if(bottom0_buf[0]) {
-			clReleaseMemObject(bottom0_buf[0]);
+		// if(bottom0_buf[1]) {
+		//	clReleaseMemObject(bottom0_buf[1]);
+		// } 
+		if(bottom1_buf[i]) {
+			clReleaseMemObject(bottom1_buf[i]);
 		}
-		if(bottom0_buf[1]) {
-			clReleaseMemObject(bottom0_buf[1]);
-		} 
-		if(bottom1_buf[0]) {
-			clReleaseMemObject(bottom1_buf[0]);
+		// if(bottom1_buf[1]) {
+		//	clReleaseMemObject(bottom1_buf[1]);
+		// }
+		if(weights_buf[i]) {
+			clReleaseMemObject(weights_buf[i]);
 		}
-		if(bottom1_buf[1]) {
-			clReleaseMemObject(bottom1_buf[1]);
+		// if(weights_buf[1]) {
+		//	clReleaseMemObject(weights_buf[1]);
+		//}
+		if(bias_buf[i]) {
+			clReleaseMemObject(bias_buf[i]);
 		}
-		if(weights_buf[0]) {
-			clReleaseMemObject(weights_buf[0]);
+		// if(bias_buf[1]) {
+		//	clReleaseMemObject(bias_buf[1]);
+		// }
+	
+		if(program[i]) {
+			clReleaseProgram(program[i]);
 		}
-		if(weights_buf[1]) {
-			clReleaseMemObject(weights_buf[1]);
+		if(context[i]) {
+			clReleaseContext(context[0]);
 		}
-		if(bias_buf[0]) {
-			clReleaseMemObject(bias_buf[0]);
-		}
-		if(bias_buf[1]) {
-			clReleaseMemObject(bias_buf[1]);
-		}
+
 	}
 
 	printf ("[INFO] Releasing all programs!\n");
-
-	if(program[0]) {
-		clReleaseProgram(program[0]);
-	}
-	if(program[1]) {
-		clReleaseProgram(program[1]);
-	}
-	if(context[0]) {
-		clReleaseContext(context[0]);
-	}
-	if(context[1]) {
-		clReleaseContext(context[1]);
-	}
-
-	printf ("[INFO] Deallocating host buffers!\n");
 
 	alignedFree(weights);
 	alignedFree(image);
