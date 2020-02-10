@@ -596,7 +596,7 @@ unsigned layer_config[][NUM_CONFIG_ITEM] = {{0,
 							3}//Layer-16  (fc8)		
 							};
 */
-unsigned layer_config[][NUM_CONFIG_ITEM] = {{0,
+unsigned layer_config[][NUM_CONFIG_ITEM] = {/*{0,
 							224, 224, 3, 3, 3, 3, 64, 64,
 							0,
 							224, 224, 64, 1, 1, 0, 1,
@@ -665,14 +665,14 @@ unsigned layer_config[][NUM_CONFIG_ITEM] = {{0,
 							28, 28, 512, 1, 1, 0, 1,
 							1, 14, 14, 512, 2, 2,
 							0,
-							0},//Layer-10 (conv4_3)
+							0},*///Layer-10 (conv4_3)
 							{0,
 							14, 14, 512, 3, 3, 512, 512, 512,
 							0,
 							14, 14, 512, 1, 1, 0, 1,
 							0, 14, 14, 512, 0, 0,
 							0,
-							1},//Layer-11  (conv5_1)
+							1}/*,//Layer-11  (conv5_1)
 							{0,
 							14, 14, 512, 3, 3, 512, 512, 512,
 							1,
@@ -708,6 +708,7 @@ unsigned layer_config[][NUM_CONFIG_ITEM] = {{0,
 							0, 1, 1, 1024, 0, 0,
 							0,
 							3}//Layer-16  (fc8)	
+							*/
 							};
 
 
@@ -726,7 +727,7 @@ char precision_config[][3] ={{7,  0, -2},//Layer-1
 							{ 8, -3, -2}//Layer-13
 				};
 
-unsigned input_config[4] = {224, 224, 3, 1};
+unsigned input_config[4] = {224, 224, 64, 1};
 
 //unsigned output_config[3] = {224, 224, 64};//Layer-1
 

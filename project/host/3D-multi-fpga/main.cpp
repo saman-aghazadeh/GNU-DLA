@@ -95,8 +95,8 @@ const char *input_file_path = "./data/data_vgg16/image.dat";
 #define IMAGE_FILE_SIZE		128*171*3*16
 #define WEIGHTS_FILE_SIZE	291879616
 #define BIASES_FILE_SIZE	10944
-#define LAYER_NUM		11
-#define CONV_NUM		9
+#define LAYER_NUM		4
+#define CONV_NUM		4
 #define IN_BUF_SIZE		55705600
 #define OUT_BUF_SIZE		55705600
 const char *weight_file_path = "./data/data_vgg16/weights.dat";
@@ -110,8 +110,8 @@ const char *input_file_path = "./data/data_vgg16/image.dat";
 #define IMAGE_FILE_SIZE   224*224*3*64
 #define WEIGHTS_FILE_SIZE 291879616  //fc8-1024
 #define BIASES_FILE_SIZE  10944
-#define LAYER_NUM         58
-#define CONV_NUM          8
+#define LAYER_NUM         1
+#define CONV_NUM          1
 #define IN_BUF_SIZE    55705600  // Note: the buffer size should be large enough to hold all temperary results
 #define OUT_BUF_SIZE   55705600
 const char *weight_file_path = "./data/data_vgg16/weights.dat";
@@ -218,8 +218,8 @@ void SplitBufferToArray(char *buffer, char * delim, char ** Output);
 void* device_runner (void* args);
 
 //int device_mapping[] = {3,1,0};
-int device_mapping[] = {3};
-//int device_mapping[] = {0};
+//int device_mapping[] = {0, 1};
+int device_mapping[] = {0};
 
 int main(int argc, char** argv)
 {
@@ -269,11 +269,10 @@ int main(int argc, char** argv)
 
 	// Create the context.
 	context[0] = clCreateContext(NULL, 1, &(device[device_mapping[0]]), NULL, NULL, &status);
-	//context[0] = clCreateContext(NULL, 1, &(device[0]), NULL, NULL, &status);
 	checkError(status, "Failed to create context");
 	
-	// context[1] = clCreateContext(NULL, 1, &(device[device_mapping[1]]), NULL, NULL, &status);
-	// checkError(status, "Failed to create context");
+	//context[1] = clCreateContext(NULL, 1, &(device[device_mapping[1]]), NULL, NULL, &status);
+	//checkError(status, "Failed to create context");
 
 	// context[2] = clCreateContext(NULL, 1, &(device[device_mapping[2]]), NULL, NULL, &status);
 	// checkError(status, "Failed to create context");
@@ -285,7 +284,7 @@ int main(int argc, char** argv)
 	program[0] = createProgramFromFile(context[0], (const char *) kernel_file_name, &(device[device_mapping[0]]), 1);
 	// program[0] = createProgramFromFile(context[0], (const char *) kernel_file_name, &(device[0]), 1);
 	
-	// program[1] = createProgramFromFile(context[1], (const char *) kernel_file_name, &(device[device_mapping[1]]), 1);
+	//program[1] = createProgramFromFile(context[1], (const char *) kernel_file_name, &(device[device_mapping[1]]), 1);
 	// program[2] = createProgramFromFile(context[2], (const char *) kernel_file_name, &(device[device_mapping[2]]), 1);
 
 	// Extracting the layer segmentations	
@@ -514,7 +513,6 @@ int main(int argc, char** argv)
 		checkError(status, "Failed to transfer config");
 
 	}
-
 	
 	device_threads.reset(num_devices);
 	for (int i = 0; i < num_devices; i++) {
@@ -688,6 +686,7 @@ int prepare()
 				printf("\nError: incorrect setting of convolution output size or filter params for layer-%d!!!\n", ll+1);
 				//return 1;
 		}
+		
 		if(layer_config_original[ll][pool_on] && ((layer_config_original[ll][pool_x]!=(layer_config_original[ll][conv_x]-layer_config_original[ll][pool_size_xy])/layer_config_original[ll][pool_stride_xy]+1)
 			|| (layer_config_original[ll][pool_y]!=(layer_config_original[ll][conv_y]-layer_config_original[ll][pool_size_xy])/layer_config_original[ll][pool_stride_xy]+1)
 			|| (layer_config_original[ll][pool_t]!=(layer_config_original[ll][conv_t]-layer_config_original[ll][pool_size_t])/layer_config_original[ll][pool_stride_t]+1)
@@ -695,6 +694,7 @@ int prepare()
 				printf("\nError: incorrect setting of pooling input/output size for layer-%d!!!\n", ll+1);
 				//return 1;
 		}
+		
 		if(layer_config[ll][conv_x]==1){ // when only one group for FC layer
 			conv_win_size_dim1  = layer_config[ll][weight_w];
 		}
@@ -703,7 +703,8 @@ int prepare()
 		}
 		conv_win_size_dim2    = layer_config[ll][weight_h];
 		// check win_buffer size
-		/*
+		
+			
 		if(conv_win_size_dim1*conv_win_size_dim2*layer_config[ll][weight_n]/VEC_SIZE > WIN_BUF_SIZE){
 			printf("Error: required win_buffer size is %d, configured size is %d, because win_size_dim1=%d and win_size_dim2=%d and weight_n=%d\n", conv_win_size_dim1*conv_win_size_dim2*layer_config[ll][weight_n]/VEC_SIZE, WIN_BUF_SIZE, conv_win_size_dim1, conv_win_size_dim2, layer_config[ll][weight_n]);
 			return 1;
@@ -713,7 +714,8 @@ int prepare()
 			printf("Error: required weight_buffer size is %d, configured size is %d \n", layer_config[ll][weight_w]*layer_config[ll][weight_h]*layer_config[ll][weight_n]/VEC_SIZE, WEIGHT_BUF_SIZE);
 			return 1;
 		}
-		*/
+		
+		
 	}
 
 
@@ -940,7 +942,7 @@ void* device_runner (void* args) {
 	cl_ulong controller_time;
 
 
-	for (int iter = 0; iter < 4; iter++) {
+	for (int iter = 0; iter < 1; iter++) {
 
 		if (i == 0)	
 			loadImageToBuffer(pic_num);

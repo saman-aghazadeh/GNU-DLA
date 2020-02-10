@@ -27,11 +27,20 @@ void memWrite(
 		int conv_z = config.conv_z;
 		int conv_t = config.conv_t;
 		int weight_w = config.weight_w;
-		
+		int w_inv_vec = W_VEC;	
 		int write_index = 0;
 
+                if(weight_w == 3)
+                        w_inv_vec = W_INV_VEC;
+                else if(weight_w == 1)
+                        w_inv_vec = W_VEC;
+                else if (weight_w == 7)
+                         w_inv_vec = 2;
+		else 
+			w_inv_vec = 1;
+
 		// We assume conv_z is divisble by LANE_NUM
-		uint num_plates = conv_y * (conv_z/LANE_NUM) * conv_t * ((conv_x-1)/W_INV_VEC + 1);
+		uint num_plates = conv_y * (conv_z/LANE_NUM) * conv_t * ((conv_x-1)/w_inv_vec + 1);
 		
 		printf ("[FPGA][memWrite][DEV%d][%d] conv_x=%d, conv_y=%d, conv_z=%d, weight_w=%d, num_plates=%d\n", device_number, i, conv_x, conv_y, conv_z, weight_w, num_plates);
 

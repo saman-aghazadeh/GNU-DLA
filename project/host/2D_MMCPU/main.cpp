@@ -13,7 +13,7 @@
 #include <math.h>
 #include <sys/time.h>
 #include <pthread.h>
-#include "mkl.h"
+//#include "mkl.h"
 
 #include <iostream>
 #include <fstream>

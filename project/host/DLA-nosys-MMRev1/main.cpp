@@ -59,7 +59,7 @@ const char *vendor_name = "Intel";
 #ifdef ALEXNET_TEST
 // Original problem size
 // File size is in num of DTYPE numbers
-#define IMAGE_FILE_SIZE   (227*227*3)
+#define IMAGE_FILE_SIZE   (227*227*3*100)
 //#define WEIGHTS_FILE_SIZE 60965224 //fc8-1000
 #define WEIGHTS_FILE_SIZE 61063552  //fc8-1024
 #define LAYER_NUM         8
@@ -72,11 +72,11 @@ const char *input_file_path = "./data/data_alex/image.dat";
 // VGG16
 // Original problem size
 // File size is in num of DTYPE numbers
-#define IMAGE_FILE_SIZE   (7*7*512)
+#define IMAGE_FILE_SIZE   (7*7*512*100)
 #define WEIGHTS_FILE_SIZE 324442112  //fc8-1024
 #define BIASES_FILE_SIZE  13440
-#define LAYER_NUM         16
-#define CONV_NUM          16
+#define LAYER_NUM         1
+#define CONV_NUM          1
 const char *weight_file_path = "./data/data_vgg16/weights.dat";
 const char *input_file_path = "./data/data_vgg16/image.dat";
 #endif
@@ -539,14 +539,22 @@ void loadImageToBuffer(int num)
 		for(unsigned i = 0; i<layer_config[0][data_h]; i++){
 			for(unsigned j = 0; j<layer_config[0][data_w]; j++){
 				for(unsigned k = 0; k<VEC_SIZE; k++){
+					//printf ("[INFO] heh!\n");
+					//printf ("[INFO] n=%d, i=%d, j=%d, k=%d, value=%d\n", n, i, j, k, (DTYPE) image[(n*VEC_SIZE+k)*layer_config[0][data_h]*layer_config[0][data_w] + i*layer_config[0][data_w] + j]);
+					//printf ("[INFO] value is available\n");
+					//printf ("[INFO] data_init is %d\n", data_init[n*VEC_SIZE*layer_config[0][data_h]*layer_config[0][data_w] + i*layer_config[0][data_w]*VEC_SIZE + j*VEC_SIZE + k]);
+					//printf ("[INFO] data_init is available\n");
 					if((n*VEC_SIZE+k)<layer_config_original[0][data_n]){ //  when layer_config[0][data_n] > layer_config_original[0][data_n], only copy valid pixels
 						data_init[n*VEC_SIZE*layer_config[0][data_h]*layer_config[0][data_w] + i*layer_config[0][data_w]*VEC_SIZE + j*VEC_SIZE + k]
 							= (DTYPE) image[(n*VEC_SIZE+k)*layer_config[0][data_h]*layer_config[0][data_w] + i*layer_config[0][data_w] + j];
 					}
+					//printf ("[INFO] data is assigned!\n");
 				}
 			}
 		}
 	}
+
+	printf ("[INFO] Start writing into the buffer!\n");
 
 	// Load image data into buffers
 	status = clEnqueueWriteBuffer(que_memRdData, bottom0_buf, CL_TRUE, 0, (layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]) * sizeof(DTYPE), data_init, 0, NULL, NULL);
@@ -686,7 +694,7 @@ int prepare()
 	printf ("[INFO] weight_n is changed to %d\n", layer_config[0][weight_n]);
 	layer_config[0][data_n] = layer_config[0][weight_n];
 
-	data_init   = (DTYPE *)alignedMalloc(sizeof(DTYPE)*layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n], DMA_ALIGNMENT);
+	data_init   = (DTYPE *)alignedMalloc(sizeof(DTYPE)*layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]*100, DMA_ALIGNMENT);
 	memset(data_init, 0, sizeof(DTYPE)*layer_config[0][data_w]*layer_config[0][data_h]*layer_config[0][data_n]);// fill non-RGB dims with 0
 
 	if(weights == NULL || image == NULL || data_init == NULL || biases == NULL)

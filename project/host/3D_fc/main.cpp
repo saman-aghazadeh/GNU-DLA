@@ -91,8 +91,8 @@ const char *input_file_path = "./data/data_vgg16/image.dat";
 #define IMAGE_FILE_SIZE   128*171*3*16
 #define WEIGHTS_FILE_SIZE 291879616  //fc8-1024
 #define BIASES_FILE_SIZE  10944
-#define LAYER_NUM         11
-#define CONV_NUM          8
+#define LAYER_NUM         1
+#define CONV_NUM          1
 #define IN_BUF_SIZE    55705600  // Note: the buffer size should be large enough to hold all temperary results
 #define OUT_BUF_SIZE   55705600
 #define FC_BOTTOM0_BUF_SIZE	8192
@@ -437,7 +437,7 @@ int main(int argc, char** argv)
 	cl_ulong fcMemWrite_time;
 	cl_ulong controller_time;
 	
-	for (int iter = 0; iter < 1; iter++) {
+	for (int iter = 0; iter < 4; iter++) {
 	
 		printf ("[INFO] Iteration number #%d\n", iter);
 	
@@ -506,7 +506,7 @@ int main(int argc, char** argv)
 
 		config_size = LAYER_NUM - CONV_NUM;
 		argi = 0;
-
+		/*
 		printf ("[INFO] Setting kernel arguments for the fcMemRd\n");
 		status = clSetKernelArg(knl_fcMemRd, argi++, sizeof(cl_char), &config_size);
 		checkError(status, "Failed to set argument %d of kernel memory fc read", argi-1);
@@ -533,7 +533,8 @@ int main(int argc, char** argv)
 		checkError(status, "Failed to set argument %d of kernel fc memory write", argi-1);
 
 		status = clSetKernelArg(knl_fcMemWrite, argi++, sizeof(cl_mem), &fc_bottom0_buf);
-		checkError(status, "Failed to set argument %d of kernel fc memory write", argi-1);
+		checkError(status, "Failed to set argument %d of kernel fc memory write", argi-1);	
+		*/
 
 		printCurrentTime();
 
@@ -548,13 +549,13 @@ int main(int argc, char** argv)
 		status = clEnqueueTask(que_memRdWeight, knl_memRdWeight, 0, NULL, &memRdWeight_event);
 		// checkError(status, "Failed to launch kernel memory read weight");
 
-		status = clEnqueueTask(que_fcMemRd, knl_fcMemRd, 0, NULL, &fcMemRd_event);
+		// status = clEnqueueTask(que_fcMemRd, knl_fcMemRd, 0, NULL, &fcMemRd_event);
 		// checkError(status, "Failed to launch fc kernel memory read");
 
 		status = clEnqueueTask(que_memWrite, knl_memWrite, 0, NULL, &memWrite_event);
 		// checkError(status, "Failed to launch kernel write");
 
-		status = clEnqueueTask(que_fcMemWrite, knl_fcMemWrite, 0, NULL, &fcMemWrite_event);
+		//  status = clEnqueueTask(que_fcMemWrite, knl_fcMemWrite, 0, NULL, &fcMemWrite_event);
 		// checkError(status, "Failed to launch fc kernel write");
 
 		// Waiting for the events
@@ -570,17 +571,17 @@ int main(int argc, char** argv)
 		// checkError(status, "Failed to wait for the memRdWeight kernel\n");
 		printf ("[INFO] Done with the memReadWeight!\n");
 
-		status = clWaitForEvents(1, &fcMemRd_event);
+		// status = clWaitForEvents(1, &fcMemRd_event);
 		// checkError(status, "Failed to wait for the memRdWeight kernel\n");
-		printf ("[INFO] Done with the fc memRead!\n");
+		// printf ("[INFO] Done with the fc memRead!\n");
 
 		status = clWaitForEvents(1, &memWrite_event);
 		// checkError(status, "Failed to wait for the memWrite kernel\n");
 		printf ("[INFO] Done with memWrite!\n");
 
-		status = clWaitForEvents(1, &fcMemWrite_event);
+		// status = clWaitForEvents(1, &fcMemWrite_event);
 		// checkError(status, "Failed to wait for the memWrite kernel\n");
-		printf ("[INFO] Done with fc memWrite!\n");
+		// printf ("[INFO] Done with fc memWrite!\n");
 
 // printf("end");
 		printCurrentTime();

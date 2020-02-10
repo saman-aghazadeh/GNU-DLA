@@ -80,15 +80,15 @@ const char *weight_file_path = "./data/data_vgg16/weights.dat";
 const char *input_file_path = "./data/data_vgg16/image.dat";
 #endif
 
-#ifdef C3D_TEST_
+#ifdef C3D_TEST
 // VGG16
 // Original problem size
 // File size is in num of DTYPE numbers
 #define IMAGE_FILE_SIZE   128*171*3*16
 #define WEIGHTS_FILE_SIZE 291879616  //fc8-1024
 #define BIASES_FILE_SIZE  10944
-#define LAYER_NUM         10
-#define CONV_NUM          8
+#define LAYER_NUM         1
+#define CONV_NUM          1
 #define IN_BUF_SIZE    55705600  // Note: the buffer size should be large enough to hold all temperary results
 #define OUT_BUF_SIZE   55705600
 const char *weight_file_path = "./data/data_vgg16/weights.dat";
@@ -102,7 +102,7 @@ const char *input_file_path = "./data/data_vgg16/image.dat";
 #define IMAGE_FILE_SIZE   224*224*3*64
 #define WEIGHTS_FILE_SIZE 291879616  //fc8-1024
 #define BIASES_FILE_SIZE  10944
-#define LAYER_NUM         58
+#define LAYER_NUM         2
 #define CONV_NUM          8
 #define IN_BUF_SIZE    55705600  // Note: the buffer size should be large enough to hold all temperary results
 #define OUT_BUF_SIZE   55705600
@@ -641,12 +641,12 @@ int prepare()
 			if(input_config[image_w] != layer_config_original[ll][data_w] ||  input_config[image_h] != layer_config_original[ll][data_h]
 				|| input_config[image_n] != layer_config_original[ll][data_n] || input_config[image_t] != layer_config_original[ll][data_t]){
 					printf("Error: incorrect layer configuration for layer-%d !!!\n", ll+1);
-					//return 1;
+					return 1;
 				}
 
 			if((layer_config_original[ll][weight_n]!=input_config[image_n])){
 				printf("\nError: incorrect layer configuration for layer-%d !!!\n", ll+1);
-				//return 1;
+				return 1;
 			}
 
 		}
@@ -659,7 +659,7 @@ int prepare()
 			}
 			if((layer_config_original[ll][data_n]!=layer_config_original[ll-1][conv_z])){
 				printf("\nError: incorrect setting of convolution input/output size for layer-%d!!!\n", ll+1);
-				// return 1;
+				return 1;
 			}
 		}
 		if((layer_config_original[ll][conv_x]!=(layer_config_original[ll][data_w]-layer_config_original[ll][weight_w]+2*layer_config_original[ll][conv_padding])/layer_config_original[ll][conv_stride]+1)
@@ -674,7 +674,7 @@ int prepare()
 			|| (layer_config_original[ll][pool_t]!=(layer_config_original[ll][conv_t]-layer_config_original[ll][pool_size_t])/layer_config_original[ll][pool_stride_t]+1)
 		    || (layer_config_original[ll][pool_z]!=layer_config_original[ll][conv_z]))){
 			printf("\nError: incorrect setting of pooling input/output size for layer-%d!!!\n", ll+1);
-			// return 1;
+			return 1;
 		}
 
 		if(layer_config[ll][conv_x]==1){ // when only one group for FC layer
@@ -685,7 +685,7 @@ int prepare()
 		}
 		conv_win_size_dim2    = layer_config[ll][weight_h];
 		// check win_buffer size
-		/*
+		
 		if(conv_win_size_dim1*conv_win_size_dim2*layer_config[ll][weight_n]/VEC_SIZE > WIN_BUF_SIZE){
 
 			printf("Error: required win_buffer size is %d, configured size is %d, because win_size_dim1=%d and win_size_dim2=%d and weight_n=%d\n", conv_win_size_dim1*conv_win_size_dim2*layer_config[ll][weight_n]/VEC_SIZE, WIN_BUF_SIZE, conv_win_size_dim1, conv_win_size_dim2, layer_config[ll][weight_n]);
@@ -697,7 +697,7 @@ int prepare()
 			printf("Error: required weight_buffer size is %d, configured size is %d \n", layer_config[ll][weight_w]*layer_config[ll][weight_h]*layer_config[ll][weight_n]/VEC_SIZE, WEIGHT_BUF_SIZE);
 			return 1;
 		}
-		*/
+		
 
 	}
 
