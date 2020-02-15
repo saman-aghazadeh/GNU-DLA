@@ -34,8 +34,8 @@ void memWrite(
                         w_inv_vec = W_INV_VEC;
                 else if(weight_w == 1)
                         w_inv_vec = W_VEC;
-                // else if (weight_w == 7)
-                //          w_inv_vec = 2;
+                else if (weight_w == 7)
+                        w_inv_vec = 2;
 		else 
 			w_inv_vec = 1;
 
