@@ -110,8 +110,8 @@ const char *input_file_path = "./data/data_vgg16/image.dat";
 #define IMAGE_FILE_SIZE   224*224*3*64
 #define WEIGHTS_FILE_SIZE 291879616  //fc8-1024
 #define BIASES_FILE_SIZE  10944
-#define LAYER_NUM         1
-#define CONV_NUM          1
+#define LAYER_NUM         6
+#define CONV_NUM          6
 #define IN_BUF_SIZE    55705600  // Note: the buffer size should be large enough to hold all temperary results
 #define OUT_BUF_SIZE   55705600
 const char *weight_file_path = "./data/data_vgg16/weights.dat";
@@ -490,9 +490,12 @@ int main(int argc, char** argv)
 
 		
 			int w_vec = W_VEC;
+			//int num_bricks_w = (fpga_config[layer].data_w+2*fpga_config[layer].conv_padding-fpga_config[layer].weight_w)/(W_VEC-fpga_config[layer].weight_w+1) + 1;
 			int num_bricks_w = (fpga_config[layer].data_w+2*fpga_config[layer].conv_padding-fpga_config[layer].weight_w)/(W_VEC-fpga_config[layer].weight_w+1) + 1;
-			int num_bricks_h = fpga_config[layer].data_h+2*fpga_config[layer].conv_padding-fpga_config[layer].weight_h+1;
-			int num_bricks_t = fpga_config[layer].data_t+2*fpga_config[layer].conv_padding-fpga_config[layer].weight_t+1;
+			int num_bricks_h = (fpga_config[layer].data_h+2*fpga_config[layer].conv_padding-fpga_config[layer].weight_h+1);
+			//int num_bricks_h = (fpga_config[layer].data_h+2*fpga_config[layer].conv_padding-fpga_config[layer].weight_h+1)/fpga_config[layer].conv_stride;
+			int num_bricks_t = (fpga_config[layer].data_t+2*fpga_config[layer].conv_padding-fpga_config[layer].weight_t+1);
+			//int num_bricks_t = (fpga_config[layer].data_t+2*fpga_config[layer].conv_padding-fpga_config[layer].weight_t+1)/fpga_config[layer].conv_stride;
 			fpga_config[layer].num_bricks = num_bricks_w * num_bricks_h * num_bricks_t;
 			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "conv_x=%d, conv_y=%d, conv_z=%d\n", i, fpga_config[layer].conv_x, fpga_config[layer].conv_y, fpga_config[layer].conv_z);
 
@@ -634,6 +637,7 @@ int prepare()
 			printf("\nWarnning: layer-%d requires padding zero-value feature maps for give param LANE_NUM=%d\n", ll+1, LANE_NUM);
 			layer_config[ll][weight_m] = ceil((float)layer_config[ll][weight_m]/LANE_NUM)*LANE_NUM;
  	      		layer_config[ll][bias_size] = layer_config[ll][weight_m];
+			layer_config[ll][conv_z] = layer_config[ll][weight_m];
 			printf("      original num of feature maps is %d, new value is %d\n", layer_config_original[ll][weight_m], layer_config[ll][weight_m]);
 			
 			// padding of weight on dim4 is needed
@@ -1142,7 +1146,8 @@ void* device_runner (void* args) {
 			printf ("[INFO] Done with ser for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
 		}
 
-		//printCurrentTime();
+		if (i == 0)
+			printCurrentTime();
 
 		printf ("[INFO] Calculating kernel runtime for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
 		memRdData_time = getKernelStartEndTime(memRdData_event, "memRd");
