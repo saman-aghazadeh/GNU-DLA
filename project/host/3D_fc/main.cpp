@@ -91,8 +91,8 @@ const char *input_file_path = "./data/data_vgg16/image.dat";
 #define IMAGE_FILE_SIZE   128*171*3*16
 #define WEIGHTS_FILE_SIZE 291879616  //fc8-1024
 #define BIASES_FILE_SIZE  10944
-#define LAYER_NUM         1
-#define CONV_NUM          1
+#define LAYER_NUM         9
+#define CONV_NUM          9
 #define IN_BUF_SIZE    55705600  // Note: the buffer size should be large enough to hold all temperary results
 #define OUT_BUF_SIZE   55705600
 #define FC_BOTTOM0_BUF_SIZE	8192

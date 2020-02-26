@@ -142,7 +142,7 @@ ifeq ($(FLOW),sw_emu)
 CXXFLAGS += -DSW_EMU
 endif
 
-MODEL = I3D_TEST
+MODEL = C3D_TEST
 
 ifeq ($(VENDOR),xilinx)
 COMP_CONFIG = -I$(XILINX_SDX)/runtime/include/1_2 -I$(HOST_INCS)  -DFPGA_DEVICE -DXILINX

@@ -95,8 +95,8 @@ const char *input_file_path = "./data/data_vgg16/image.dat";
 #define IMAGE_FILE_SIZE		128*171*3*16
 #define WEIGHTS_FILE_SIZE	291879616
 #define BIASES_FILE_SIZE	10944
-#define LAYER_NUM		4
-#define CONV_NUM		4
+#define LAYER_NUM		54
+#define CONV_NUM		54
 #define IN_BUF_SIZE		55705600
 #define OUT_BUF_SIZE		55705600
 const char *weight_file_path = "./data/data_vgg16/weights.dat";
@@ -110,8 +110,8 @@ const char *input_file_path = "./data/data_vgg16/image.dat";
 #define IMAGE_FILE_SIZE   224*224*3*64
 #define WEIGHTS_FILE_SIZE 291879616  //fc8-1024
 #define BIASES_FILE_SIZE  10944
-#define LAYER_NUM         6
-#define CONV_NUM          6
+#define LAYER_NUM         109
+#define CONV_NUM          109
 #define IN_BUF_SIZE    55705600  // Note: the buffer size should be large enough to hold all temperary results
 #define OUT_BUF_SIZE   55705600
 const char *weight_file_path = "./data/data_vgg16/weights.dat";
@@ -211,15 +211,15 @@ unsigned layer_config_original[LAYER_NUM][NUM_CONFIG_ITEM];
 
 void loadImageToBuffer(int num);
 int  prepare();
-void printCurrentTime();
+int printCurrentTime();
 void cleanup();
 void SplitBufferToArray(char *buffer, char * delim, char ** Output);
 
 void* device_runner (void* args);
 
 //int device_mapping[] = {3,1,0};
-//int device_mapping[] = {0, 1};
-int device_mapping[] = {0};
+int device_mapping[] = {0, 1};
+//int device_mapping[] = {0};
 
 int main(int argc, char** argv)
 {
@@ -251,7 +251,7 @@ int main(int argc, char** argv)
 
 	// Query the available OpenCL device
 	device.reset(getDevices(platform_id, DEVICE_TYPE, &num_devices));
-	num_devices = 1;
+	num_devices = 2;
 	printf("\nPlatform: %s\n", getPlatformName(platform_id).c_str());
 	printf("Using %d device(s)\n", num_devices);
 	for(unsigned i = 0; i < num_devices; ++i) {
@@ -271,8 +271,8 @@ int main(int argc, char** argv)
 	context[0] = clCreateContext(NULL, 1, &(device[device_mapping[0]]), NULL, NULL, &status);
 	checkError(status, "Failed to create context");
 	
-	//context[1] = clCreateContext(NULL, 1, &(device[device_mapping[1]]), NULL, NULL, &status);
-	//checkError(status, "Failed to create context");
+	context[1] = clCreateContext(NULL, 1, &(device[device_mapping[1]]), NULL, NULL, &status);
+	checkError(status, "Failed to create context");
 
 	// context[2] = clCreateContext(NULL, 1, &(device[device_mapping[2]]), NULL, NULL, &status);
 	// checkError(status, "Failed to create context");
@@ -284,14 +284,16 @@ int main(int argc, char** argv)
 	program[0] = createProgramFromFile(context[0], (const char *) kernel_file_name, &(device[device_mapping[0]]), 1);
 	// program[0] = createProgramFromFile(context[0], (const char *) kernel_file_name, &(device[0]), 1);
 	
-	//program[1] = createProgramFromFile(context[1], (const char *) kernel_file_name, &(device[device_mapping[1]]), 1);
+	program[1] = createProgramFromFile(context[1], (const char *) kernel_file_name, &(device[device_mapping[1]]), 1);
 	// program[2] = createProgramFromFile(context[2], (const char *) kernel_file_name, &(device[device_mapping[2]]), 1);
 
 	// Extracting the layer segmentations	
 	assigned_layers.reset(num_devices);
 	layers_per_device.reset(num_devices);
+	printf ("[INFO] hello!\n");
+
 	for (int i = 0; i < num_devices; i++) {
-		int* layers_as_array = new int[20];
+		int* layers_as_array = new int[100];
 		int num_layers_involved = 0;
 		char* layers = argv[i+2];
 		char* pch = strtok(layers, ",");
@@ -483,7 +485,7 @@ int main(int argc, char** argv)
 			fpga_config[layer].lrn_on = layer_config[assigned_layers[i][0]+layer-1][lrn_on];
 			fpga_config[layer].memwr_dst = layer_config[assigned_layers[i][0]+layer-1][memwr_dst];
 
-			//printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "layer_type: %d, data_w: %d, data_h: %d, weight_w: %d, weight_h: %d, weight_n: %d, weight_m: %d, memrd_src: %d, conv_x: %d, conv_y: %d, conv_z: %d, conv_stride: %d, conv_padding: %d, conv_split: %d, conv_relu: %d, pool_on: %d, pool_x: %d, pool_y: %d, pool_z: %d, pool_size: %d, conv_stride: %d, lrn_on: %d, memwr_dst: %d\n", i, layer_config[assigned_layers[i][0]+layer][layer_type], layer_config[assigned_layers[i][0]+layer][data_w], layer_config[assigned_layers[i][0]+layer][data_h], layer_config[assigned_layers[i][0]+layer][weight_w], layer_config[assigned_layers[i][0]+layer][weight_h], layer_config[assigned_layers[i][0]+layer][weight_n], layer_config[assigned_layers[i][0]+layer][weight_m], layer_config[assigned_layers[i][0]+layer][memrd_src], layer_config[assigned_layers[i][0]+layer][conv_x], layer_config[assigned_layers[i][0]+layer][conv_y], layer_config[assigned_layers[i][0]+layer][conv_z], layer_config[assigned_layers[i][0]+layer][conv_stride], layer_config[assigned_layers[i][0]+layer][conv_padding], layer_config[assigned_layers[i][0]+layer][conv_split], layer_config[assigned_layers[i][0]+layer][conv_relu], layer_config[assigned_layers[i][0]+layer][pool_on], layer_config[assigned_layers[i][0]+layer][pool_x], layer_config[assigned_layers[i][0]+layer][pool_y], layer_config[assigned_layers[i][0]+layer][pool_z], layer_config[assigned_layers[i][0]+layer][pool_size], layer_config[assigned_layers[i][0]+layer][pool_stride], layer_config[assigned_layers[i][0]+layer][lrn_on], layer_config[assigned_layers[i][0]+layer][memwr_dst]);
+			// printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "layer_type: %d, data_w: %d, data_h: %d, weight_w: %d, weight_h: %d, weight_n: %d, weight_m: %d, memrd_src: %d, conv_x: %d, conv_y: %d, conv_z: %d, conv_stride: %d, conv_padding: %d, conv_split: %d, conv_relu: %d, pool_on: %d, pool_x: %d, pool_y: %d, pool_z: %d, pool_size: %d, conv_stride: %d, lrn_on: %d, memwr_dst: %d\n", i, layer_config[assigned_layers[i][0]+layer][layer_type], layer_config[assigned_layers[i][0]+layer][data_w], layer_config[assigned_layers[i][0]+layer][data_h], layer_config[assigned_layers[i][0]+layer][weight_w], layer_config[assigned_layers[i][0]+layer][weight_h], layer_config[assigned_layers[i][0]+layer][weight_n], layer_config[assigned_layers[i][0]+layer][weight_m], layer_config[assigned_layers[i][0]+layer][memrd_src], layer_config[assigned_layers[i][0]+layer][conv_x], layer_config[assigned_layers[i][0]+layer][conv_y], layer_config[assigned_layers[i][0]+layer][conv_z], layer_config[assigned_layers[i][0]+layer][conv_stride], layer_config[assigned_layers[i][0]+layer][conv_padding], layer_config[assigned_layers[i][0]+layer][conv_split], layer_config[assigned_layers[i][0]+layer][conv_relu], layer_config[assigned_layers[i][0]+layer][pool_on], layer_config[assigned_layers[i][0]+layer][pool_x], layer_config[assigned_layers[i][0]+layer][pool_y], layer_config[assigned_layers[i][0]+layer][pool_z], layer_config[assigned_layers[i][0]+layer][pool_size], layer_config[assigned_layers[i][0]+layer][pool_stride], layer_config[assigned_layers[i][0]+layer][lrn_on], layer_config[assigned_layers[i][0]+layer][memwr_dst]);
 		
 			// int w_vec = W_VEC;
 			// fpga_config[layer].num_bricks = (layer_config[assigned_layers[i][0]+layer][data_h]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_h]+1)*((layer_config[assigned_layers[i][0]+layer][data_w]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_w])/(W_VEC-layer_config[assigned_layers[i][0]+layer][weight_w]+1) + 1);
@@ -504,10 +506,10 @@ int main(int argc, char** argv)
 			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "data_h: %d\n", i, fpga_config[layer].data_h);
 			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "conv_padding: %d\n", i, fpga_config[layer].conv_padding);
 			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "weight_w: %d\n", i, fpga_config[layer].weight_w);	
-			//printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "Some #1: %d\n", i, layer_config[layer][data_h]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_h]+1);
-			//printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "first part: %d\n", i, (layer_config[assigned_layers[i][0]+layer][data_w]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_w]));
-			//printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "second part: %d\n", i, (w_vec-layer_config[assigned_layers[i][0]+layer][weight_w]+1));
-			//printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "Some #2: %d\n", i, ((layer_config[assigned_layers[i][0]+layer][data_w]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_w])/(w_vec-layer_config[assigned_layers[i][0]+layer][weight_w]+1)) + 1);
+			printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "Some #1: %d\n", i, layer_config[layer][data_h]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_h]+1);
+			// printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "first part: %d\n", i, (layer_config[assigned_layers[i][0]+layer][data_w]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_w]));
+			// printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "second part: %d\n", i, (w_vec-layer_config[assigned_layers[i][0]+layer][weight_w]+1));
+			// printf ("[INFO] " ANSI_COLOR_RED "DEVICE %d " ANSI_COLOR_RESET "Some #2: %d\n", i, ((layer_config[assigned_layers[i][0]+layer][data_w]+2*layer_config[assigned_layers[i][0]+layer][conv_padding]-layer_config[assigned_layers[i][0]+layer][weight_w])/(w_vec-layer_config[assigned_layers[i][0]+layer][weight_w]+1)) + 1);
 			// printf ("[INFO] Some #1: %d, Some #2: %d, data_w: %d, conv_padding: %d, w_vec: %d, weight_w: %d\n", layer_config[layer][data_h]+2*layer_config[layer][conv_padding]-layer_config[layer][weight_h]+1, ceil((layer_config[layer][data_w]+2*layer_config[layer][conv_padding]-W_VEC)/(W_VEC-layer_config[layer][weight_w]+1)), layer_config[layer][data_w], layer_config[layer][conv_padding], w_vec, layer_config[layer][weight_w]);
 		}
 	
@@ -708,17 +710,17 @@ int prepare()
 		conv_win_size_dim2    = layer_config[ll][weight_h];
 		// check win_buffer size
 		
-			
+		/*	
 		if(conv_win_size_dim1*conv_win_size_dim2*layer_config[ll][weight_n]/VEC_SIZE > WIN_BUF_SIZE){
 			printf("Error: required win_buffer size is %d, configured size is %d, because win_size_dim1=%d and win_size_dim2=%d and weight_n=%d\n", conv_win_size_dim1*conv_win_size_dim2*layer_config[ll][weight_n]/VEC_SIZE, WIN_BUF_SIZE, conv_win_size_dim1, conv_win_size_dim2, layer_config[ll][weight_n]);
 			return 1;
 		}
 		// check weight_buffer size
 		if(layer_config[ll][weight_w]*layer_config[ll][weight_h]*layer_config[ll][weight_n]/VEC_SIZE > WEIGHT_BUF_SIZE){
-			printf("Error: required weight_buffer size is %d, configured size is %d \n", layer_config[ll][weight_w]*layer_config[ll][weight_h]*layer_config[ll][weight_n]/VEC_SIZE, WEIGHT_BUF_SIZE);
+			printf("Error: required weight_buffer size is %d, configured size is %d for layer %d\n", layer_config[ll][weight_w]*layer_config[ll][weight_h]*layer_config[ll][weight_n]/VEC_SIZE, WEIGHT_BUF_SIZE, ll);
 			return 1;
 		}
-		
+		*/
 		
 	}
 
@@ -888,7 +890,7 @@ void cleanup()
 
 }
 
-void printCurrentTime() {
+int printCurrentTime() {
 
 	char fmt[64];
 	char buf[64];
@@ -899,8 +901,12 @@ void printCurrentTime() {
 	gettimeofday(&tv, NULL);
 	tm = localtime (&tv.tv_sec);
 	strftime (fmt, sizeof (fmt), "%H:%M:%S:%%6u", tm);
+	//strftime(fmt, sizeof(fmt), "%%6u", tm);
 	snprintf (buf, sizeof (buf), fmt, tv.tv_usec);
 	printf ("[INFO] Reading at %s\n", buf);
+
+	//return atoi(buf);
+	return 0;
 
 }
 
@@ -945,8 +951,9 @@ void* device_runner (void* args) {
 	cl_ulong memWrite_time;
 	cl_ulong controller_time;
 
+	int totalTime = 0;
 
-	for (int iter = 0; iter < 1; iter++) {
+	for (int iter = 0; iter < 4; iter++) {
 
 		if (i == 0)	
 			loadImageToBuffer(pic_num);
@@ -1082,9 +1089,11 @@ void* device_runner (void* args) {
 	
 		status = clSetKernelArg(knl_ser[i], argi++, sizeof(cl_mem), top);
 		checkError(status, "Failed to set argument %d of kernel ser", argi-1);
+		
+		int start, finish;
 
 		if (i == 0)
-			printCurrentTime();
+			start = printCurrentTime();
 
 		// Enqueueing kernels
 		printf ("[INFO] Enqueuing tasks [controller,deser[if],memRdData,memRdWeight,memWrite,ser[if]] " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
@@ -1146,8 +1155,10 @@ void* device_runner (void* args) {
 			printf ("[INFO] Done with ser for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
 		}
 
-		if (i == 0)
-			printCurrentTime();
+		//if (i == 0)
+		//	finish = printCurrentTime();
+
+		//totalTime += (finish - start);
 
 		printf ("[INFO] Calculating kernel runtime for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
 		memRdData_time = getKernelStartEndTime(memRdData_event, "memRd");
@@ -1177,5 +1188,7 @@ void* device_runner (void* args) {
 		checkError(status, "Failed to release controller event object");
 
 	} // end of iterations
+
+	// printf ("[INFO] Average time is %d\n", totalTime/4);
 
 }
