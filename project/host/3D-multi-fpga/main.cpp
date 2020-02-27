@@ -162,7 +162,7 @@ typedef struct {
 
 typedef struct device_runner_arg {
 	int device;
-	int starter = 0;
+	int role;
 } device_runner_arg;
 
 // Define the kernel names used
@@ -204,6 +204,7 @@ DTYPE *data_init;
 
 scoped_array<int> layers_per_device;
 scoped_array<scoped_array<int>> assigned_layers;
+scoped_array<int> fpgas_roles;
 
 // Threads that are handling the devices
 scoped_array<pthread_t> device_threads;
@@ -293,7 +294,19 @@ int main(int argc, char** argv)
 	// Extracting the layer segmentations	
 	assigned_layers.reset(num_devices);
 	layers_per_device.reset(num_devices);
+	fpgas_roles.reset(num_devices);
 	printf ("[INFO] hello!\n");
+
+	// 0 == Starter, 1 == Middle, 2 == Finisher
+	char* roles = argv[2];
+	char* pch = strtok(roles, ",");
+	int counter = 0;
+	while (pch != NULL) {
+		fpgas_roles[counter] = atoi(pch);
+		pch = strtok(NULL, ",");
+		counter++;
+	}
+
 
 	for (int i = 0; i < num_devices; i++) {
 		int* layers_as_array = new int[100];
@@ -526,7 +539,7 @@ int main(int argc, char** argv)
 	for (int i = 0; i < num_devices; i++) {
 		device_runner_arg* device_arg = new device_runner_arg;
 		device_arg->device = i;
-		device_arg->starter = starter;
+		device_arg->role = fpgas_roles[i];
 
 		printf ("[INFO] Dispatching thread #%d\n", i);	
 		pthread_create(&(device_threads[i]), NULL, device_runner, (void *) device_arg);
@@ -939,7 +952,7 @@ void* device_runner (void* args) {
 
 	device_runner_arg *device_arg = (device_runner_arg *) args;
 	int i = device_arg->device;
-	int starter = device_arg->starter;
+	int role = device_arg->role;
 	char i_ch = i;
 
 	// Execute the kernel
@@ -977,14 +990,14 @@ void* device_runner (void* args) {
 
 		// Only the first device of the starter avoids deserialization of the data
 		char deser_data;
-		if (i == 0 && starter == 1) deser_data = 0;
+		if (role == 0 || role == 3) deser_data = 0;
 		else deser_data = 1;
 
 		status = clSetKernelArg(knl_controller[i], argi++, sizeof(cl_char), &deser_data);
 		checkError(status, "Failed to set argument %d of kernel controller", argi-1);
 
 		char ser_data;
-		if (i == num_devices-1) ser_data = 0;
+		if (role == 2 || role == 3) ser_data = 0;
 		else ser_data = 1;
 
 		status = clSetKernelArg(knl_controller[i], argi++, sizeof(cl_char), &ser_data);
@@ -1097,7 +1110,7 @@ void* device_runner (void* args) {
 		
 		int start, finish;
 
-		if (i == 0 && starter == 1)
+		if (role == 0 || role == 3)
 			start = printCurrentTime();
 
 		// Enqueueing kernels
@@ -1106,7 +1119,7 @@ void* device_runner (void* args) {
 		status = clEnqueueTask(que_controller[i], knl_controller[i], 0, NULL, &controller_event);
 		checkError(status, "Failed to launch kernel controller");
 
-		if (!(i == 0 && starter == 1)) {
+		if (role == 1 || role == 2) {
 			printf ("[INFO] Enqueuing tasks deser " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
 			status = clEnqueueTask(que_memRdData[i], knl_deser[i], 0, NULL, &deser_event);
 			checkError(status, "Failed to lauch kernel deserializer");
@@ -1124,7 +1137,7 @@ void* device_runner (void* args) {
 		status = clEnqueueTask(que_memWrite[i], knl_memWrite[i], 0, NULL, &memWrite_event);
 		checkError(status, "Failed to launch kernel write");
 
-		if (i != num_devices -1) {
+		if (role == 0 || role == 1) {
 			printf ("[INFO] Enqueuing tasks ser " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
 			status = clEnqueueTask(que_memWrite[i], knl_ser[i], 1, &memWrite_event, &ser_event);
 			checkError(status, "Failed to launch kernel serializer");
@@ -1135,7 +1148,7 @@ void* device_runner (void* args) {
 		checkError(status, "Failed to wait for the controller kernel\n");
 		printf ("[INFO] Done with the controller for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
 
-		if (i != 0) {
+		if (role == 1 || role == 2) {
 			status = clWaitForEvents(1, &deser_event);
 			checkError(status, "Failed to wait for the deserializer kernel\n");
 			printf ("[INFO] Done with the deser for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
@@ -1153,7 +1166,7 @@ void* device_runner (void* args) {
 		checkError(status, "Failed to wait for the memWrite kernel\n");
 		printf ("[INFO] Done with memWrite for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
 
-		if (i != num_devices-1) {
+		if (role == 0 || role == 1) {
 			printf ("Waiting for ser\n");
 			status = clWaitForEvents(1, &ser_event);
 			checkError(status, "Failed to wait for the ser kernel\n");
@@ -1175,7 +1188,7 @@ void* device_runner (void* args) {
 
 		printf ("[INFO] Releasing events for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
 	
-		if (!(i == 0 && starter == 1)) {
+		if (role == 1 || role == 2) {
 			status = clReleaseEvent(deser_event);
 			checkError(status, "Failed to release deser data event object");
 		}
@@ -1185,7 +1198,7 @@ void* device_runner (void* args) {
 		checkError(status, "Failed to release mem read weight event object");
 		status = clReleaseEvent(memWrite_event);
 		checkError(status, "Failed to release mem write event object");
-		if (i != num_devices-1) {
+		if (role == 0 || role == 1) {
 			status = clReleaseEvent(ser_event);
 			checkError(status, "Failed to release ser data event object");
 		}
