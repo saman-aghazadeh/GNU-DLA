@@ -162,6 +162,7 @@ typedef struct {
 
 typedef struct device_runner_arg {
 	int device;
+	int starter = 0;
 } device_runner_arg;
 
 // Define the kernel names used
@@ -231,8 +232,8 @@ int main(int argc, char** argv)
 
 	if (argc < 3){
 		printf("Error: wrong commad format, usage:\n");
-		printf("%s <binaryfile> [layers,[...]]\n", argv[0]);
-		printf("Example: main.exe conv.aocx 1,2,3,4 5,6,7,8\n");
+		printf("%s <binaryfile> [starter] [layers,[...]]\n", argv[0]);
+		printf("Example: main.exe conv.aocx [0,1] 1,2,3,4 5,6,7,8\n");
 		return EXIT_FAILURE;
 	}
 
@@ -261,7 +262,7 @@ int main(int argc, char** argv)
 	context.reset(num_devices);
 	program.reset(num_devices);
 
-	if (num_devices != argc - 2) {
+	if (num_devices != argc - 3) {
 		printf ("ERROR: Number of layer segmentations should be\nequal to the number of devices!\n");
 		return false;
 	}
@@ -280,6 +281,8 @@ int main(int argc, char** argv)
 	// Create Program Objects
 	char *kernel_file_name=argv[1];
 
+	int starter = atoi(argv[2]);
+
 	// Create the program for all device. All devices execute the same kernel.
 	program[0] = createProgramFromFile(context[0], (const char *) kernel_file_name, &(device[device_mapping[0]]), 1);
 	// program[0] = createProgramFromFile(context[0], (const char *) kernel_file_name, &(device[0]), 1);
@@ -295,7 +298,7 @@ int main(int argc, char** argv)
 	for (int i = 0; i < num_devices; i++) {
 		int* layers_as_array = new int[100];
 		int num_layers_involved = 0;
-		char* layers = argv[i+2];
+		char* layers = argv[i+3];
 		char* pch = strtok(layers, ",");
 		while (pch != NULL) {
 			layers_as_array[num_layers_involved] = atoi(pch);
@@ -523,6 +526,7 @@ int main(int argc, char** argv)
 	for (int i = 0; i < num_devices; i++) {
 		device_runner_arg* device_arg = new device_runner_arg;
 		device_arg->device = i;
+		device_arg->starter = starter;
 
 		printf ("[INFO] Dispatching thread #%d\n", i);	
 		pthread_create(&(device_threads[i]), NULL, device_runner, (void *) device_arg);
@@ -935,6 +939,7 @@ void* device_runner (void* args) {
 
 	device_runner_arg *device_arg = (device_runner_arg *) args;
 	int i = device_arg->device;
+	int starter = device_arg->starter;
 	char i_ch = i;
 
 	// Execute the kernel
@@ -970,9 +975,9 @@ void* device_runner (void* args) {
 		status = clSetKernelArg(knl_controller[i], argi++, sizeof(cl_char), &layer_num);
 		checkError(status, "Failed to set argument %d of kernel controller", argi-1);
 
-		// Only the first device avoids deserialization of the data
+		// Only the first device of the starter avoids deserialization of the data
 		char deser_data;
-		if (i == 0) deser_data = 0;
+		if (i == 0 && starter == 1) deser_data = 0;
 		else deser_data = 1;
 
 		status = clSetKernelArg(knl_controller[i], argi++, sizeof(cl_char), &deser_data);
@@ -1092,7 +1097,7 @@ void* device_runner (void* args) {
 		
 		int start, finish;
 
-		if (i == 0)
+		if (i == 0 && starter == 1)
 			start = printCurrentTime();
 
 		// Enqueueing kernels
@@ -1101,7 +1106,7 @@ void* device_runner (void* args) {
 		status = clEnqueueTask(que_controller[i], knl_controller[i], 0, NULL, &controller_event);
 		checkError(status, "Failed to launch kernel controller");
 
-		if (i != 0) {
+		if (!(i == 0 && starter == 1)) {
 			printf ("[INFO] Enqueuing tasks deser " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
 			status = clEnqueueTask(que_memRdData[i], knl_deser[i], 0, NULL, &deser_event);
 			checkError(status, "Failed to lauch kernel deserializer");
@@ -1170,7 +1175,7 @@ void* device_runner (void* args) {
 
 		printf ("[INFO] Releasing events for the " ANSI_COLOR_RED "DEVICE %d" ANSI_COLOR_RESET "!\n", i);
 	
-		if (i != 0) {
+		if (!(i == 0 && starter == 1)) {
 			status = clReleaseEvent(deser_event);
 			checkError(status, "Failed to release deser data event object");
 		}
