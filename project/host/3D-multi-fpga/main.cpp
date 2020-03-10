@@ -219,9 +219,9 @@ void SplitBufferToArray(char *buffer, char * delim, char ** Output);
 
 void* device_runner (void* args);
 
-//int device_mapping[] = {3,1,0};
-int device_mapping[] = {0, 1};
-//int device_mapping[] = {0};
+// int device_mapping[] = {3,1,0};
+// int device_mapping[] = {0, 1};
+int device_mapping[] = {0};
 
 int main(int argc, char** argv)
 {
@@ -253,7 +253,7 @@ int main(int argc, char** argv)
 
 	// Query the available OpenCL device
 	device.reset(getDevices(platform_id, DEVICE_TYPE, &num_devices));
-	num_devices = 2;
+	num_devices = 1;
 	printf("\nPlatform: %s\n", getPlatformName(platform_id).c_str());
 	printf("Using %d device(s)\n", num_devices);
 	for(unsigned i = 0; i < num_devices; ++i) {
@@ -273,8 +273,8 @@ int main(int argc, char** argv)
 	context[0] = clCreateContext(NULL, 1, &(device[device_mapping[0]]), NULL, NULL, &status);
 	checkError(status, "Failed to create context");
 	
-	context[1] = clCreateContext(NULL, 1, &(device[device_mapping[1]]), NULL, NULL, &status);
-	checkError(status, "Failed to create context");
+	// context[1] = clCreateContext(NULL, 1, &(device[device_mapping[1]]), NULL, NULL, &status);
+	// checkError(status, "Failed to create context");
 
 	// context[2] = clCreateContext(NULL, 1, &(device[device_mapping[2]]), NULL, NULL, &status);
 	// checkError(status, "Failed to create context");
@@ -288,7 +288,7 @@ int main(int argc, char** argv)
 	program[0] = createProgramFromFile(context[0], (const char *) kernel_file_name, &(device[device_mapping[0]]), 1);
 	// program[0] = createProgramFromFile(context[0], (const char *) kernel_file_name, &(device[0]), 1);
 	
-	program[1] = createProgramFromFile(context[1], (const char *) kernel_file_name, &(device[device_mapping[1]]), 1);
+	// program[1] = createProgramFromFile(context[1], (const char *) kernel_file_name, &(device[device_mapping[1]]), 1);
 	// program[2] = createProgramFromFile(context[2], (const char *) kernel_file_name, &(device[device_mapping[2]]), 1);
 
 	// Extracting the layer segmentations	
@@ -309,7 +309,7 @@ int main(int argc, char** argv)
 
 
 	for (int i = 0; i < num_devices; i++) {
-		int* layers_as_array = new int[100];
+		int* layers_as_array = new int[150];
 		int num_layers_involved = 0;
 		char* layers = argv[i+3];
 		char* pch = strtok(layers, ",");
